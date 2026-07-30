@@ -124,6 +124,9 @@ export class GameManager {
     room.roundHistory = [];
     room.roundStartedAt = null;
     room.buzzerPressedAt = null;
+    room.roundAttemptId = (room.roundAttemptId || 0) + 1;
+    if (room.buzzerTimer) clearTimeout(room.buzzerTimer);
+    room.buzzerTimer = null;
     room.answerAttemptId = 0;
     room.answerDeadlineAt = null;
     if (room.answerTimer) clearTimeout(room.answerTimer);

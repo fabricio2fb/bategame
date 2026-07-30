@@ -511,19 +511,7 @@ io.on('connection', (socket) => {
         io.to(`room:${roomCode}`).emit('game:started', { gameState });
 
         setTimeout(() => {
-          room.status = 'buzzer-open';
-          room.currentBuzzerWinnerId = null;
-          room.roundStartedAt = Date.now();
-          io.to(`room:${roomCode}`).emit('game:state', gameManager.getFullGameState(room));
-          io.to(`room:${roomCode}`).emit('buzzer:opened', { roundStartedAt: room.roundStartedAt });
-
-          const timeLimit = room.selectedQuestions[room.currentQuestionIndex]?.timeLimitSeconds || 15;
-          const buzzerTimeout = Math.min(timeLimit * 1000, 15000);
-          setTimeout(() => {
-            if (room.status === 'buzzer-open' && room.currentBuzzerWinnerId === null) {
-              handleBuzzerTimeout(room);
-            }
-          }, buzzerTimeout);
+          openBuzzer(room);
         }, 2000);
       }, 3000);
     } catch (err) {
@@ -800,6 +788,8 @@ io.on('connection', (socket) => {
       if (!player?.isHost) return callback?.({ success: false, error: { code: 'NOT_HOST', message: 'Apenas o host.' } });
       if (room.status !== 'game-finished') return callback?.({ success: false, error: { code: 'GAME_NOT_FINISHED', message: 'Partida não terminou.' } });
 
+      clearBuzzerTimer(room);
+      clearAnswerTimer(room);
       room.status = 'lobby';
       room.selectedQuestions = [];
       room.currentQuestionIndex = 0;
@@ -808,6 +798,7 @@ io.on('connection', (socket) => {
       room.blockedPlayerIds = new Set();
       room.roundHistory = [];
       room.roundStartedAt = null;
+      room.roundAttemptId = (room.roundAttemptId || 0) + 1;
       room.sofaSelectedPlayerId = null;
       room.buzzerPressedAt = null;
       room.lastActivityAt = Date.now();
@@ -866,6 +857,31 @@ io.on('connection', (socket) => {
     room.answerDeadlineAt = null;
   }
 
+  function clearBuzzerTimer(room: GameRoom): void {
+    if (room.buzzerTimer) {
+      clearTimeout(room.buzzerTimer);
+      room.buzzerTimer = null;
+    }
+  }
+
+  function openBuzzer(room: GameRoom, eligiblePlayerIds?: string[]): void {
+    clearBuzzerTimer(room);
+    room.roundAttemptId = (room.roundAttemptId || 0) + 1;
+    const roundAttemptId = room.roundAttemptId;
+
+    room.status = 'buzzer-open';
+    room.currentBuzzerWinnerId = null;
+    room.roundStartedAt = Date.now();
+    io.to(`room:${room.code}`).emit('game:state', gameManager.getFullGameState(room));
+    io.to(`room:${room.code}`).emit('buzzer:opened', { roundStartedAt: room.roundStartedAt, eligiblePlayerIds });
+
+    const question = room.selectedQuestions[room.currentQuestionIndex];
+    const buzzerTimeoutMs = Math.min((question?.timeLimitSeconds || 15) * 1000, 15000);
+    room.buzzerTimer = setTimeout(() => {
+      handleBuzzerTimeout(room, roundAttemptId);
+    }, buzzerTimeoutMs);
+  }
+
   function getEligiblePlayers(room: GameRoom): Player[] {
     return Array.from(room.players.values()).filter((p) => {
       if (!p.isConnected) return false;
@@ -883,6 +899,7 @@ io.on('connection', (socket) => {
   }
 
   function startAnswerTurn(room: GameRoom, player: Player, options: { reactionTime?: number; transferredFromPlayerId?: string } = {}): void {
+    clearBuzzerTimer(room);
     clearAnswerTimer(room);
     room.answerAttemptId = (room.answerAttemptId || 0) + 1;
     const attemptId = room.answerAttemptId;
@@ -927,6 +944,7 @@ io.on('connection', (socket) => {
   }
 
   function finishAllWrong(room: GameRoom, result: 'all_wrong' | 'timeout' = 'all_wrong'): void {
+    clearBuzzerTimer(room);
     clearAnswerTimer(room);
     room.currentBuzzerWinnerId = null;
     room.status = 'round-finished';
@@ -982,11 +1000,7 @@ io.on('connection', (socket) => {
 
     setTimeout(() => {
       if (room.status === 'round-finished' || room.status === 'game-finished') return;
-      room.status = 'buzzer-open';
-      room.currentBuzzerWinnerId = null;
-      room.roundStartedAt = Date.now();
-      io.to(`room:${room.code}`).emit('game:state', gameManager.getFullGameState(room));
-      io.to(`room:${room.code}`).emit('buzzer:opened', { roundStartedAt: room.roundStartedAt, eligiblePlayerIds: eligible.map(p => p.id) });
+      openBuzzer(room, eligible.map(p => p.id));
       io.to(`room:${room.code}`).emit('buzzer:winner', { winnerId: null, winnerName: null, blockedPlayerId: failedPlayerId });
     }, 1500);
   }
@@ -1020,7 +1034,11 @@ io.on('connection', (socket) => {
     }
   }
 
-  function handleBuzzerTimeout(room: GameRoom): void {
+  function handleBuzzerTimeout(room: GameRoom, roundAttemptId?: number): void {
+    if (roundAttemptId !== undefined && room.roundAttemptId !== roundAttemptId) return;
+    if (room.status !== 'buzzer-open') return;
+    if (room.currentBuzzerWinnerId !== null) return;
+    clearBuzzerTimer(room);
     room.status = 'round-finished';
     gameManager.addRoundEvent(room, { type: 'buzzer-timeout' });
     const question = gameManager.getCurrentQuestion(room);
@@ -1043,6 +1061,7 @@ io.on('connection', (socket) => {
   }
 
   function advanceToNext(room: GameRoom): void {
+    clearBuzzerTimer(room);
     clearAnswerTimer(room);
     if (room.currentQuestionIndex >= room.selectedQuestions.length - 1) {
       room.status = 'game-finished';
@@ -1081,19 +1100,7 @@ io.on('connection', (socket) => {
       io.to(`room:${room.code}`).emit('game:state', gameManager.getFullGameState(room));
 
       setTimeout(() => {
-        room.status = 'buzzer-open';
-        room.currentBuzzerWinnerId = null;
-        room.roundStartedAt = Date.now();
-        io.to(`room:${room.code}`).emit('game:state', gameManager.getFullGameState(room));
-        io.to(`room:${room.code}`).emit('buzzer:opened', { roundStartedAt: room.roundStartedAt });
-
-        const question = room.selectedQuestions[room.currentQuestionIndex];
-        const buzzerTimeout = Math.min((question?.timeLimitSeconds || 15) * 1000, 15000);
-        setTimeout(() => {
-          if (room.status === 'buzzer-open' && room.currentBuzzerWinnerId === null) {
-            handleBuzzerTimeout(room);
-          }
-        }, buzzerTimeout);
+        openBuzzer(room);
       }, 2000);
     }, 3000);
   }

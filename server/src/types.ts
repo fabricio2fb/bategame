@@ -115,6 +115,8 @@ export interface GameRoom {
   lastActivityAt: number;
   roundStartedAt: number | null;
   buzzerPressedAt?: number | null;
+  roundAttemptId?: number;
+  buzzerTimer?: ReturnType<typeof setTimeout> | null;
   answerAttemptId?: number;
   answerDeadlineAt?: number | null;
   answerTimer?: ReturnType<typeof setTimeout> | null;

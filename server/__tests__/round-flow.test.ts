@@ -45,7 +45,7 @@ async function connectPlayer(): Promise<Socket> {
   return socket;
 }
 
-async function createQuiz(socket: Socket): Promise<string> {
+async function createQuiz(socket: Socket, timeLimitSeconds = 15): Promise<string> {
   const questions = Array.from({ length: 5 }, (_, idx) => ({
     text: `Pergunta teste ${idx + 1}`,
     answerType: 'multiple-choice',
@@ -54,7 +54,7 @@ async function createQuiz(socket: Socket): Promise<string> {
     alternatives: ['Right', 'Wrong 1', 'Wrong 2', 'Wrong 3'],
     correctAlternativeIndex: 0,
     correctAnswer: 'Right',
-    timeLimitSeconds: 15,
+    timeLimitSeconds,
     explanation: 'Explicacao teste',
   }));
   const response: any = await emitAck(socket, 'quiz:create', {
@@ -65,9 +65,9 @@ async function createQuiz(socket: Socket): Promise<string> {
   return response.quizId;
 }
 
-async function createStartedRoom(playerNames: string[], answerTimeSeconds = 5) {
+async function createStartedRoom(playerNames: string[], answerTimeSeconds = 5, questionTimeLimitSeconds = 15) {
   const sockets = await Promise.all(playerNames.map(() => connectPlayer()));
-  const quizId = await createQuiz(sockets[0]);
+  const quizId = await createQuiz(sockets[0], questionTimeLimitSeconds);
   const settings = {
     gameMode: 'classic',
     questionSource: 'custom',
@@ -202,6 +202,25 @@ async function scenarioTimeoutTransferAndStaleTimer() {
   a.disconnect(); b.disconnect();
 }
 
+async function scenarioOldBuzzerTimerDoesNotFinishNextRound() {
+  console.log('\nROUND FLOW 9. Old buzzer timer does not finish next round');
+  const { sockets: [a, b], roomCode } = await createStartedRoom(['Luan', 'Mara'], 5, 5);
+  const qaPromise = once<any>(a, 'question:for-player');
+  await buzz(a, roomCode);
+  const qa = await qaPromise;
+
+  const nextRoundOpened = once<any>(a, 'buzzer:opened', 12000);
+  await submit(a, roomCode, qa.question.id, 'Right');
+  await nextRoundOpened;
+
+  await wait(2500);
+  const lookup: any = await emitAck(a, 'room:get', { roomCode });
+  assert(lookup.success, 'room remains available after old buzzer timer window');
+  assert(lookup.room.currentQuestionIndex === 1, 'second round remains the active round');
+  assert(lookup.room.status === 'buzzer-open', 'second round buzzer remains open instead of timing out early');
+  a.disconnect(); b.disconnect();
+}
+
 async function scenarioLeaveAndHostTransfer() {
   console.log('\nROUND FLOW 8. Leave removes player and transfers host');
   const a = await connectPlayer();
@@ -246,6 +265,7 @@ async function main(): Promise<void> {
   await scenarioTwoPlayersBothWrong();
   await scenarioThreePlayersReopensBuzzer();
   await scenarioTimeoutTransferAndStaleTimer();
+  await scenarioOldBuzzerTimerDoesNotFinishNextRound();
   await scenarioLeaveAndHostTransfer();
 
   if (failed > 0) {

@@ -41,6 +41,8 @@ export class RoomManager {
       createdAt: Date.now(),
       lastActivityAt: Date.now(),
       roundStartedAt: null,
+      roundAttemptId: 0,
+      buzzerTimer: null,
       answerAttemptId: 0,
       answerDeadlineAt: null,
       answerTimer: null,
