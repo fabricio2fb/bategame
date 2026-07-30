@@ -8,6 +8,7 @@ const SOCKET_CONFIG_ERROR = 'Servidor Socket.IO nao configurado. Configure NEXT_
 let globalSocket: Socket | null = null;
 
 let lastError: string | null = null;
+let connectionAttempt = 0;
 
 function normalizeSocketUrl(value: string): string {
   return value.trim().replace(/\/$/, '');
@@ -53,7 +54,13 @@ export function getSocket(): Socket {
     throw new Error(SOCKET_CONFIG_ERROR);
   }
 
-  console.log(`[socket] Connecting to ${socketUrl}...`);
+  connectionAttempt += 1;
+  console.info('[socket] connecting', {
+    attempt: connectionAttempt,
+    url: socketUrl,
+    pageOrigin: window.location.origin,
+    transports: ['polling', 'websocket'],
+  });
 
   globalSocket = io(socketUrl, {
     autoConnect: true,
@@ -67,16 +74,36 @@ export function getSocket(): Socket {
 
   globalSocket.on('connect', () => {
     lastError = null;
-    console.log(`[socket] Connected: ${globalSocket?.id}`);
+    console.info('[socket] connected', {
+      id: globalSocket?.id,
+      transport: globalSocket?.io.engine.transport.name,
+    });
+  });
+
+  globalSocket.io.engine.on('upgrade', (transport) => {
+    console.info('[socket] transport upgraded', { transport: transport.name });
   });
 
   globalSocket.on('disconnect', (reason) => {
-    console.log(`[socket] Disconnected: ${reason}`);
+    console.warn('[socket] disconnected', { reason });
   });
 
   globalSocket.on('connect_error', (err) => {
     lastError = err.message;
-    console.error(`[socket] Connection error:`, err.message);
+    const details = err as Error & {
+      description?: unknown;
+      context?: unknown;
+      type?: string;
+    };
+    console.error('[socket] connect_error', {
+      message: err.message,
+      type: details.type,
+      description: details.description,
+      context: details.context,
+      url: socketUrl,
+      pageOrigin: window.location.origin,
+      activeTransport: globalSocket?.io.engine?.transport?.name,
+    });
   });
 
   return globalSocket;

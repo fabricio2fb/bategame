@@ -88,6 +88,19 @@ if (process.env.NODE_ENV !== 'production') {
   clientUrls.push('http://localhost:3000');
 }
 
+app.use((req, _res, next) => {
+  if (req.path === '/' || req.path === '/health' || req.path.startsWith('/socket.io')) {
+    console.log('[http]', {
+      method: req.method,
+      path: req.path,
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      userAgent: req.headers['user-agent'],
+    });
+  }
+  next();
+});
+
 app.use(cors({ origin: clientUrls, credentials: true }));
 app.get('/', (_req, res) => {
   res.status(200).json({
@@ -110,8 +123,30 @@ const io = new Server(httpServer, {
   pingTimeout: 20000,
 });
 
+io.engine.on('connection_error', (err) => {
+  console.error('[socket.io] connection_error', {
+    code: err.code,
+    message: err.message,
+    context: err.context,
+    origin: err.req?.headers.origin,
+    url: err.req?.url,
+  });
+});
+
 io.on('connection', (socket) => {
-  console.log(`[connect] ${socket.id}`);
+  console.log('[socket.io] connected', {
+    id: socket.id,
+    origin: socket.handshake.headers.origin,
+    transport: socket.conn.transport.name,
+    address: socket.handshake.address,
+  });
+
+  socket.conn.on('upgrade', (transport) => {
+    console.log('[socket.io] transport upgraded', {
+      id: socket.id,
+      transport: transport.name,
+    });
+  });
 
   socket.on('room:create', (data, callback) => {
     if (!checkRateLimit(socket.id, 5, 10000)) {
