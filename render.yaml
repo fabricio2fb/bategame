@@ -7,6 +7,8 @@ services:
     startCommand: npm run start:render
     healthCheckPath: /health
     envVars:
+      - key: BATEPRIMEIRO_SERVICE
+        value: socket
       - key: NODE_ENV
         value: production
       - key: CLIENT_URLS
