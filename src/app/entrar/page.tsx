@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Key, AlertCircle } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { useSocketRoom } from '@/hooks/useSocketRoom';
+import { getSocketDiagnosticsLabel } from '@/lib/socket';
 import { getRoomPath, isValidRoomCode, sanitizeRoomCodeInput } from '@/lib/room-code';
 
 type JoinError = 'not-found' | 'full' | 'started' | 'name-taken' | 'server-error' | null;
@@ -152,7 +153,7 @@ export default function EntrarPage() {
                   <p className="mt-0.5 opacity-80">Detalhe: {socketError}</p>
                 )}
                 <p className="mt-0.5 opacity-70">
-                  URL: {process.env.NEXT_PUBLIC_SOCKET_URL || 'http://127.0.0.1:3002'}
+                  URL: {getSocketDiagnosticsLabel()}
                 </p>
               </div>
             )}

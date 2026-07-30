@@ -117,6 +117,20 @@ test('34. Partida sofa nao tem navbar branca e sair fica no menu interno', () =>
   assert.match(header, /confirmLeaveOnExit/);
 });
 
+test('35. Site inicia conexao Socket.IO no layout e producao nao usa localhost', () => {
+  const layout = read('src/app/layout.tsx');
+  const bootstrap = read('src/components/SocketBootstrap.tsx');
+  const socket = read('src/lib/socket.ts');
+  const nextConfig = read('next.config.ts');
+  assert.match(layout, /<SocketBootstrap \/>/);
+  assert.match(bootstrap, /getSocket\(\)/);
+  assert.match(socket, /NEXT_PUBLIC_SOCKET_URL/);
+  assert.match(socket, /process\.env\.NODE_ENV !== 'production'/);
+  assert.match(socket, /return null/);
+  assert.match(socket, /Servidor Socket\.IO nao configurado/);
+  assert.doesNotMatch(nextConfig, /127\.0\.0\.1:3002/);
+});
+
 test('2. /sala/5HG2Y tem pagina dinamica e nao depende de notFound', () => {
   const page = read('src/app/sala/[codigo]/page.tsx');
   assert.match(page, /useSocketRoom\(code\)/);

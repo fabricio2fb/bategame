@@ -137,6 +137,7 @@ export function useSocketRoom(roomCode?: string, enabled = true): UseSocketRoomR
       sock = getSocket();
     } catch {
       setConnectionStatus('error');
+      setSocketError(getLastSocketError());
       return;
     }
 

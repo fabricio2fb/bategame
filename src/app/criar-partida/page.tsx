@@ -7,6 +7,7 @@ import { ArrowLeft, Globe, Lock, Plus, CheckSquare, Mic, ChevronDown, ChevronUp,
 import { Logo } from '@/components/Logo';
 import { RoomSettings, RoomPrivacy, Difficulty, AnswerType, GameMode, QuestionSource } from '@/lib/types';
 import { useSocketRoom } from '@/hooks/useSocketRoom';
+import { getSocketDiagnosticsLabel } from '@/lib/socket';
 import { getRoomPath } from '@/lib/room-code';
 import { CouchSetup } from '@/components/couch/CouchSetup';
 import { saveCouchMatchConfig } from '@/lib/couch-match-storage';
@@ -160,7 +161,7 @@ export default function CriarPartidaPage() {
     if (gameMode === 'couch') return;
     if (!validate() || isSubmitting) return;
     if (connectionStatus !== 'connected') {
-      setServerError(`Servidor não disponível. Status: ${connectionStatus}. Verifique se o servidor Socket.IO está rodando em ${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://127.0.0.1:3002'}.`);
+      setServerError(`Servidor não disponível. Status: ${connectionStatus}. Verifique se o servidor Socket.IO está acessível em ${getSocketDiagnosticsLabel()}.`);
       return;
     }
     if (questionSource === 'custom' && !quizId) {
@@ -336,7 +337,7 @@ export default function CriarPartidaPage() {
                       <p className="text-xs mt-0.5 opacity-80">Detalhe: {socketError}</p>
                     )}
                     <p className="text-xs mt-0.5 opacity-70">
-                      URL: {process.env.NEXT_PUBLIC_SOCKET_URL || 'http://127.0.0.1:3002'}
+                      URL: {getSocketDiagnosticsLabel()}
                     </p>
                   </div>
                 </div>

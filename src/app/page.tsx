@@ -24,7 +24,13 @@ export default function Home() {
   const [onlineCount, setOnlineCount] = useState(0);
 
   useEffect(() => {
-    const sock = getSocket();
+    let sock;
+    try {
+      sock = getSocket();
+    } catch {
+      setLoading(false);
+      return;
+    }
 
     const handleRoomsList = (response: any) => {
       if (response.success) {
@@ -60,7 +66,13 @@ export default function Home() {
 
   const handleRefresh = () => {
     setLoading(true);
-    const sock = getSocket();
+    let sock;
+    try {
+      sock = getSocket();
+    } catch {
+      setLoading(false);
+      return;
+    }
     sock.emit('rooms:list', {}, (response: any) => {
       if (response.success) {
         setRooms(response.rooms || []);
