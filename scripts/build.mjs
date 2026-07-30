@@ -4,7 +4,7 @@ const isRender = process.env.RENDER === 'true' || !!process.env.RENDER_SERVICE_I
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 function run(command, args) {
-  const result = spawnSync(command, args, { stdio: 'inherit', shell: true });
+  const result = spawnSync(command, args, { stdio: 'inherit', shell: process.platform === 'win32' });
   if (result.error) {
     console.error('[build] Failed to run command:', command, args.join(' '), result.error);
   }

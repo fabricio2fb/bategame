@@ -1,14 +1,11 @@
 services:
   - type: web
     name: bateprimeiro-socket
-    runtime: node
-    rootDir: .
-    buildCommand: npm run build:render
-    startCommand: npm run start:render
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     envVars:
-      - key: BATEPRIMEIRO_SERVICE
-        value: socket
       - key: NODE_ENV
         value: production
       - key: CLIENT_URLS

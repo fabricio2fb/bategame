@@ -11,7 +11,7 @@ console.log(isRender
   ? '[start] Render environment detected. Starting Socket.IO backend.'
   : '[start] Starting Next.js frontend.');
 
-const result = spawnSync(npmCommand, args, { stdio: 'inherit', shell: true });
+const result = spawnSync(npmCommand, args, { stdio: 'inherit', shell: process.platform === 'win32' });
 if (result.error) {
   console.error('[start] Failed to run command:', npmCommand, args.join(' '), result.error);
 }

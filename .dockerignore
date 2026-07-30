@@ -1,0 +1,16 @@
+node_modules
+server/node_modules
+.next
+server/dist
+dist
+build
+coverage
+.git
+.vercel
+.agents
+.codex
+*.log
+*.tsbuildinfo
+data/reports
+server/data/reports
+server/data/questions/backup
