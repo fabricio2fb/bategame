@@ -79,15 +79,23 @@ function checkRateLimit(socketId: string, maxCalls: number = 10, windowMs: numbe
 questionManager.loadAll();
 
 const app = express();
-app.use(cors());
 const httpServer = createServer(app);
 
 const clientUrls = process.env.CLIENT_URLS
   ? process.env.CLIENT_URLS.split(',').map(s => s.trim())
-  : ['http://localhost:3001'];
+  : ['https://bateprimeiro.vercel.app', 'http://localhost:3001'];
 if (process.env.NODE_ENV !== 'production') {
   clientUrls.push('http://localhost:3000');
 }
+
+app.use(cors({ origin: clientUrls, credentials: true }));
+app.get('/health', (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: 'bateprimeiro-socket',
+    questionsLoaded: questionManager.getTotalLoaded(),
+  });
+});
 
 const io = new Server(httpServer, {
   cors: { origin: clientUrls, methods: ['GET', 'POST'], credentials: true },

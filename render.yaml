@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: bateprimeiro-socket
+    runtime: node
+    rootDir: .
+    buildCommand: cd server && npm ci && npm run build
+    startCommand: cd server && npm run start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_URLS
+        value: https://bateprimeiro.vercel.app
