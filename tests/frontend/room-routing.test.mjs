@@ -128,6 +128,7 @@ test('35. Site inicia conexao Socket.IO no layout e producao nao usa localhost',
   assert.match(socket, /process\.env\.NODE_ENV !== 'production'/);
   assert.match(socket, /return null/);
   assert.match(socket, /Servidor Socket\.IO nao configurado/);
+  assert.match(socket, /transports: \['polling', 'websocket'\]/);
   assert.doesNotMatch(nextConfig, /127\.0\.0\.1:3002/);
 });
 

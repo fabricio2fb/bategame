@@ -89,6 +89,13 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.use(cors({ origin: clientUrls, credentials: true }));
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: 'bateprimeiro-socket',
+    message: 'BatePrimeiro Socket.IO server is running.',
+  });
+});
 app.get('/health', (_req, res) => {
   res.status(200).json({
     ok: true,
