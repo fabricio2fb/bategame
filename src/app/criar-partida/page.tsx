@@ -243,7 +243,9 @@ export default function CriarPartidaPage() {
       <div className="min-h-screen flex flex-col">
         <header className="h-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-5xl mx-auto h-full flex items-center justify-between">
-            <Link href="/bateprimeiro" className="flex items-center gap-2"><Logo /></Link>
+            <Link href="/bateprimeiro" className="flex items-center gap-2">
+              <Logo src="/LOGO-BATEPRIMEIRO.png" text="BatePrimeiro" />
+            </Link>
             <Link href="/bateprimeiro"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-[#64748B] hover:text-[#0F172A] bg-white border border-[#CBD5E1] rounded-lg transition-colors">
               <ArrowLeft className="w-4 h-4" /><span>Voltar</span>
@@ -294,7 +296,9 @@ export default function CriarPartidaPage() {
     <div className="min-h-screen flex flex-col">
       <header className="h-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto h-full flex items-center justify-between">
-          <Link href="/bateprimeiro" className="flex items-center gap-2"><Logo /></Link>
+          <Link href="/bateprimeiro" className="flex items-center gap-2">
+            <Logo src="/LOGO-BATEPRIMEIRO.png" text="BatePrimeiro" />
+          </Link>
           <Link href="/bateprimeiro"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-[#64748B] hover:text-[#0F172A] bg-white border border-[#CBD5E1] rounded-lg transition-colors">
             <ArrowLeft className="w-4 h-4" /><span>Voltar</span>
