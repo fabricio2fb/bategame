@@ -9,4 +9,4 @@ services:
       - key: NODE_ENV
         value: production
       - key: CLIENT_URLS
-        value: https://tempale.online
+        value: https://tempale.online,https://www.tempale.online

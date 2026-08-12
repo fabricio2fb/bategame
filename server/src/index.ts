@@ -274,7 +274,7 @@ const httpServer = createServer(app);
 
 const clientUrls = process.env.CLIENT_URLS
   ? process.env.CLIENT_URLS.split(',').map(s => s.trim())
-  : ['https://tempale.online', 'http://localhost:3001'];
+  : ['https://tempale.online', 'https://www.tempale.online', 'http://localhost:3001'];
 if (process.env.NODE_ENV !== 'production') {
   clientUrls.push('http://localhost:3000');
 }
