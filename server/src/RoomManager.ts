@@ -4,6 +4,7 @@ import { ROOM_CODE_CHARS, ROOM_CODE_LENGTH } from './roomCode';
 
 const ROOMS = new Map<string, GameRoom>();
 const CUSTOM_QUIZZES = new Map<string, CustomQuiz>();
+const DEFAULT_GAME_TYPE = 'bateprimeiro';
 
 const DISCONNECT_TIMEOUT = 60000;
 const INACTIVITY_CLEANUP = 30 * 60 * 1000;
@@ -23,12 +24,16 @@ export class RoomManager {
   }
 
   createRoom(code: string, name: string, hostPlayerId: string, settings: RoomSettings): GameRoom {
+    const finalSettings: RoomSettings = {
+      ...settings,
+      gameType: settings.gameType || DEFAULT_GAME_TYPE,
+    };
     const room: GameRoom = {
       code,
       name,
       hostPlayerId,
       status: 'lobby',
-      settings,
+      settings: finalSettings,
       players: new Map(),
       teams: [],
       selectedQuestions: [],
@@ -45,6 +50,7 @@ export class RoomManager {
       buzzerTimer: null,
       answerAttemptId: 0,
       answerDeadlineAt: null,
+      roundDeadlineAt: null,
       answerTimer: null,
       teamRotationIndex: 0,
       usedQuestionIds: new Set(),
@@ -76,6 +82,12 @@ export class RoomManager {
 
   removePlayer(room: GameRoom, playerId: string): boolean {
     const result = room.players.delete(playerId);
+    if (result) {
+      for (const team of room.teams) {
+        team.playerIds = team.playerIds.filter(id => id !== playerId);
+        if (team.activePlayerId === playerId) team.activePlayerId = undefined;
+      }
+    }
     room.lastActivityAt = Date.now();
     return result;
   }
@@ -107,9 +119,10 @@ export class RoomManager {
       list.push({
         code: room.code,
         name: room.name,
+        gameType: room.settings.gameType || DEFAULT_GAME_TYPE,
         hostName: host?.name ?? 'Anfitrião',
         status: room.status,
-        settings: { ...room.settings },
+        settings: { ...room.settings, gameType: room.settings.gameType || DEFAULT_GAME_TYPE },
         playerCount: room.players.size,
         createdAt: room.createdAt,
       });
@@ -124,10 +137,11 @@ export class RoomManager {
       name: room.name,
       hostPlayerId: room.hostPlayerId,
       status: room.status,
-      settings: { ...room.settings },
+      settings: { ...room.settings, gameType: room.settings.gameType || DEFAULT_GAME_TYPE },
       players: Array.from(room.players.values()).map(p => ({
         id: p.id,
         name: p.name,
+        avatarUrl: p.avatarUrl,
         score: p.score,
         isHost: p.isHost,
         isReady: p.isReady,
@@ -163,7 +177,7 @@ export class RoomManager {
       currentTeamId: room.currentTeamId,
       blockedPlayerIds: Array.from(room.blockedPlayerIds),
       scores: Array.from(room.players.values())
-        .map(p => ({ playerId: p.id, name: p.name, score: p.score }))
+        .map(p => ({ playerId: p.id, name: p.name, avatarUrl: p.avatarUrl, score: p.score }))
         .sort((a, b) => b.score - a.score),
       teamScores: room.teams
         .map(t => ({

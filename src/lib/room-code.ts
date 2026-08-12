@@ -1,3 +1,5 @@
+import type { GameType } from './types';
+
 export const ROOM_CODE_LENGTH = 5;
 export const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const ROOM_CODE_PATTERN = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}$/;
@@ -21,8 +23,25 @@ export function getRoomPath(code: string): string {
   return `/sala/${normalized}`;
 }
 
-export function getGamePath(code: string): string {
+export function getGamePath(code: string, gameType: GameType = 'bateprimeiro'): string {
   const normalized = normalizeRoomCode(code);
-  if (!isValidRoomCode(normalized)) return '/';
-  return `/partida/${normalized}`;
+  if (!isValidRoomCode(normalized)) return '/bateprimeiro';
+
+  if (gameType === 'quem-chega-mais-perto') {
+    return `/partida/quem-chega-mais-perto/${normalized}`;
+  }
+
+  if (gameType === 'qual-e-a-palavra') {
+    return `/partida/qual-e-a-palavra/${normalized}`;
+  }
+
+  if (gameType === 'bate-o-tempo') {
+    return `/partida/bate-o-tempo/${normalized}`;
+  }
+
+  if (gameType === 'tres-letras') {
+    return `/partida/tres-letras/${normalized}`;
+  }
+
+  return `/partida/bateprimeiro/${normalized}`;
 }

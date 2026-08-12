@@ -16,10 +16,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#CBD5E1]">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-[#0F172A] tracking-tight">
-          Bem-vindo ao BatePrimeiro
+          Bem-vindo ao Tempale
         </h1>
         <p className="text-sm text-[#64748B] mt-1">
-          Quem bater primeiro responde. Entre em uma sala aberta ou crie uma nova partida.
+          Escolha um jogo, entre em uma sala aberta ou crie uma nova partida.
         </p>
       </div>
 

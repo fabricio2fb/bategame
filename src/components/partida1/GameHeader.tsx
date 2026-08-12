@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { BookOpen, LogOut, Menu, Settings, Users, Volume2, VolumeX, Wifi, X, Zap } from 'lucide-react';
+import { BookOpen, Home, LogOut, Menu, Settings, Users, Volume2, VolumeX, Wifi, X, Zap } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 
 interface GameHeaderProps {
@@ -11,8 +12,11 @@ interface GameHeaderProps {
   category: string;
   timer: number;
   soundOn: boolean;
+  gameTitle?: string;
+  gameIcon?: string;
+  accentColor?: string;
   isHost?: boolean;
-  players?: Array<{ id: string; name: string; score: number }>;
+  players?: Array<{ id: string; name: string; avatarUrl?: string; score: number }>;
   settingsSummary?: string;
   compact?: boolean;
   confirmLeaveOnExit?: boolean;
@@ -29,6 +33,9 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
   category,
   timer,
   soundOn,
+  gameTitle,
+  gameIcon,
+  accentColor = '#3B82F6',
   isHost = false,
   compact = false,
   confirmLeaveOnExit = true,
@@ -110,21 +117,42 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
     <header className="relative z-50 bg-black/20 backdrop-blur-xl border-b border-white/10">
       <div className={`max-w-7xl mx-auto ${compact ? 'h-10 px-2 sm:h-11 sm:px-3' : 'h-12 px-4'} flex items-center justify-between gap-3 sm:gap-4`}>
         <div className="flex items-center gap-3 min-w-0">
-          <Logo className="[&>div]:h-7 [&>div]:w-7 [&>span]:hidden md:[&>span]:inline [&>span]:text-sm [&>span]:text-white" />
+          {gameTitle && gameIcon ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/90">
+                <img src={gameIcon} alt="" className="h-5 w-5 object-contain" />
+              </span>
+              <span className="hidden max-w-[11rem] truncate text-sm font-black text-white md:inline">
+                {gameTitle}
+              </span>
+            </div>
+          ) : (
+            <Logo className="[&>div]:h-7 [&>div]:w-7 [&>span]:hidden md:[&>span]:inline [&>span]:text-sm [&>span]:text-white" />
+          )}
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-white/70 whitespace-nowrap">
               Pergunta <span className="text-white">{questionNumber}</span>/{totalQuestions}
             </span>
             <div className="hidden sm:block w-20 h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <motion.div className="h-full bg-[#3B82F6] rounded-full" animate={{ width: `${progress}%` }} transition={{ duration: 0.5 }} />
+              <motion.div className="h-full rounded-full" style={{ backgroundColor: accentColor }} animate={{ width: `${progress}%` }} transition={{ duration: 0.5 }} />
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-1.5 text-[10px] font-medium text-[#93C5FD] bg-[#3B82F6]/15 px-2 py-0.5 rounded-full">
+          <div
+            className="hidden md:flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium"
+            style={{ backgroundColor: `${accentColor}24`, color: accentColor }}
+          >
             {category}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          <Link
+            href="/"
+            aria-label="Voltar ao hub"
+            className="grid h-8 w-8 place-items-center rounded-lg text-white/55 transition-all hover:bg-white/10 hover:text-white/90 sm:hidden"
+          >
+            <Home className="h-4 w-4" />
+          </Link>
           <div className="flex items-center gap-1 px-2 py-0.5 bg-white/5 rounded-full">
             <Zap className={`w-3 h-3 ${timer <= 5 ? 'text-[#EF4444]' : 'text-[#F59E0B]'}`} />
             <span className={`text-xs font-bold tabular-nums ${timer <= 5 ? 'text-[#EF4444]' : 'text-white/80'}`}>
@@ -155,7 +183,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
       </div>
 
       <div className="sm:hidden h-0.5 bg-white/5">
-        <motion.div className="h-full bg-[#3B82F6]" animate={{ width: `${progress}%` }} transition={{ duration: 0.5 }} />
+        <motion.div className="h-full" style={{ backgroundColor: accentColor }} animate={{ width: `${progress}%` }} transition={{ duration: 0.5 }} />
       </div>
 
       {menuOpen && (

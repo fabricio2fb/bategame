@@ -8,6 +8,7 @@ import { Podium } from './Podium';
 interface FinalScore {
   playerId: string;
   name: string;
+  avatarUrl?: string;
   score: number;
 }
 
@@ -15,19 +16,27 @@ interface FinalResultsProps {
   scores: FinalScore[];
   currentPlayerId: string | null;
   isHost: boolean;
+  accentColor?: string;
   onRematch: () => void;
   onLeave: () => void;
 }
 
-export const FinalResults: React.FC<FinalResultsProps> = ({ scores, currentPlayerId, isHost, onRematch, onLeave }) => {
+export const FinalResults: React.FC<FinalResultsProps> = ({ scores, currentPlayerId, isHost, accentColor, onRematch, onLeave }) => {
   const sorted = [...scores].sort((a, b) => b.score - a.score);
   const topScore = sorted[0]?.score ?? 0;
   const winners = sorted.filter(s => s.score === topScore);
   const isTie = winners.length > 1;
   const isWinner = winners.some(w => w.playerId === currentPlayerId);
 
+  const pageBackground = accentColor
+    ? `radial-gradient(circle at 50% 12%, ${accentColor}66, transparent 28rem), linear-gradient(135deg, #0F172A 0%, ${accentColor} 100%)`
+    : undefined;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#38BDF8] to-[#4ADE80] flex flex-col">
+    <div
+      className={`min-h-screen flex flex-col ${accentColor ? '' : 'bg-gradient-to-br from-[#38BDF8] to-[#4ADE80]'}`}
+      style={accentColor ? { backgroundColor: '#0F172A', backgroundImage: pageBackground } : undefined}
+    >
       <div className="flex-1 max-w-3xl mx-auto px-4 w-full py-6 sm:py-10 space-y-6">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-2">
@@ -95,7 +104,8 @@ export const FinalResults: React.FC<FinalResultsProps> = ({ scores, currentPlaye
           className="flex flex-col sm:flex-row gap-3">
           {isHost && (
             <button onClick={onRematch}
-              className="flex-1 py-3.5 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] shadow-[0_4px_16px_rgba(59,130,246,0.35)]">
+              className="flex-1 py-3.5 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              style={{ backgroundColor: accentColor || '#3B82F6', boxShadow: `0 4px 16px ${accentColor || '#3B82F6'}55` }}>
               <RefreshCw className="w-4 h-4" /><span>Revanche</span>
             </button>
           )}

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: bateprimeiro-socket
+    name: tempale-socket
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -9,4 +9,4 @@ services:
       - key: NODE_ENV
         value: production
       - key: CLIENT_URLS
-        value: https://bateprimeiro.vercel.app
+        value: https://tempale.online

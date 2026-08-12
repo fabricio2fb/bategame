@@ -9,6 +9,7 @@ import {
 import { Socket } from 'socket.io-client';
 import { getLastSocketError } from '@/lib/socket';
 import { isValidRoomCode, normalizeRoomCode } from '@/lib/room-code';
+import { DEFAULT_AVATAR } from '@/lib/player-avatar';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error';
 
@@ -20,19 +21,21 @@ interface UseSocketRoomReturn {
   roomLookupComplete: boolean;
   isHost: boolean;
   error: string | null;
-  createRoom: (playerName: string, roomName: string, settings: RoomSettings) => Promise<{ success: boolean; roomCode?: string; error?: string }>;
-  joinRoom: (roomCode: string, playerName: string) => Promise<{ success: boolean; error?: string }>;
+  createRoom: (playerName: string, roomName: string, settings: RoomSettings, avatarUrl?: string) => Promise<{ success: boolean; roomCode?: string; error?: string }>;
+  joinRoom: (roomCode: string, playerName: string, avatarUrl?: string) => Promise<{ success: boolean; error?: string }>;
   leaveRoom: () => void;
   toggleReady: () => void;
   updateSettings: (settings: Partial<RoomSettings>) => Promise<boolean>;
   removePlayer: (targetPlayerId: string) => Promise<boolean>;
-  startGame: () => Promise<{ success: boolean; error?: string }>;
+  startGame: () => Promise<{ success: boolean; error?: string; comingSoon?: boolean }>;
   pressBuzzer: () => Promise<boolean>;
   judgeAnswer: (playerId: string, result: 'correct' | 'wrong') => void;
   submitAnswer: (questionId: string, selectedAlternative: string) => void;
   requestRematch: () => Promise<boolean>;
   createQuiz: (quizName: string, questions: any[]) => Promise<{ success: boolean; quizId?: string; error?: string }>;
+  createCustomContent: (payload: { gameType: string; title: string; items: any[] }) => Promise<{ success: boolean; contentId?: string; title?: string; error?: string }>;
   assignTeams: (teamCount: number) => Promise<boolean>;
+  chooseTeam: (teamId: string) => Promise<{ success: boolean; error?: string }>;
   selectSofaPlayer: (targetPlayerId: string) => Promise<boolean>;
   submitWrittenAnswer: (questionId: string, answer: string) => void;
   onGameEvent: (event: string, handler: (...args: any[]) => void) => void;
@@ -226,10 +229,10 @@ export function useSocketRoom(roomCode?: string, enabled = true): UseSocketRoomR
 
   const isHost = currentPlayer?.isHost ?? false;
 
-  const createRoom = useCallback(async (playerName: string, roomName: string, settings: RoomSettings): Promise<{ success: boolean; roomCode?: string; error?: string }> => {
+  const createRoom = useCallback(async (playerName: string, roomName: string, settings: RoomSettings, avatarUrl?: string): Promise<{ success: boolean; roomCode?: string; error?: string }> => {
     return new Promise((resolve) => {
       const sock = getSocket();
-      sock.emit('room:create', { playerName, roomName, settings }, (response: any) => {
+      sock.emit('room:create', { playerName, roomName, settings, avatarUrl: avatarUrl || DEFAULT_AVATAR }, (response: any) => {
         if (response.success) {
           playerIdRef.current = response.playerId;
           saveSessionData({ roomCode: response.roomCode, playerId: response.playerId, playerToken: response.playerToken });
@@ -246,11 +249,11 @@ export function useSocketRoom(roomCode?: string, enabled = true): UseSocketRoomR
     });
   }, []);
 
-  const joinRoom = useCallback(async (roomCode: string, playerName: string): Promise<{ success: boolean; error?: string }> => {
+  const joinRoom = useCallback(async (roomCode: string, playerName: string, avatarUrl?: string): Promise<{ success: boolean; error?: string }> => {
     return new Promise((resolve) => {
       const sock = getSocket();
       const normalizedCode = normalizeRoomCode(roomCode);
-      sock.emit('room:join', { roomCode: normalizedCode, playerName }, (response: any) => {
+      sock.emit('room:join', { roomCode: normalizedCode, playerName, avatarUrl: avatarUrl || DEFAULT_AVATAR }, (response: any) => {
         if (response.success) {
           playerIdRef.current = response.playerId;
           saveSessionData({ roomCode: response.roomCode, playerId: response.playerId, playerToken: response.playerToken });
@@ -307,12 +310,12 @@ export function useSocketRoom(roomCode?: string, enabled = true): UseSocketRoomR
     });
   }, []);
 
-  const startGame = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+  const startGame = useCallback(async (): Promise<{ success: boolean; error?: string; comingSoon?: boolean }> => {
     if (!roomRef.current) return { success: false, error: 'Sala não encontrada.' };
     const sock = getSocket();
     return new Promise((resolve) => {
       sock.emit('game:start', { roomCode: roomRef.current!.code }, (response: any) => {
-        if (response.success) resolve({ success: true });
+        if (response.success) resolve({ success: true, comingSoon: response.comingSoon === true });
         else resolve({ success: false, error: response.error?.message || 'Erro ao iniciar partida.' });
       });
     });
@@ -360,12 +363,33 @@ export function useSocketRoom(roomCode?: string, enabled = true): UseSocketRoomR
     });
   }, []);
 
+  const createCustomContent = useCallback(async (payload: { gameType: string; title: string; items: any[] }): Promise<{ success: boolean; contentId?: string; title?: string; error?: string }> => {
+    return new Promise((resolve) => {
+      const sock = getSocket();
+      sock.emit('content:create', payload, (response: any) => {
+        if (response.success) resolve({ success: true, contentId: response.contentId, title: response.title });
+        else resolve({ success: false, error: response.error?.message || 'Erro ao salvar conteudo personalizado.' });
+      });
+    });
+  }, []);
+
   const assignTeams = useCallback(async (teamCount: number): Promise<boolean> => {
     if (!roomRef.current) return false;
     const sock = getSocket();
     return new Promise((resolve) => {
       sock.emit('team:assign', { roomCode: roomRef.current!.code, teamCount }, (response: any) => {
         resolve(response?.success ?? false);
+      });
+    });
+  }, []);
+
+  const chooseTeam = useCallback(async (teamId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!roomRef.current) return { success: false, error: 'Sala nao encontrada.' };
+    const sock = getSocket();
+    return new Promise((resolve) => {
+      sock.emit('team:choose', { roomCode: roomRef.current!.code, teamId }, (response: any) => {
+        if (response?.success) resolve({ success: true });
+        else resolve({ success: false, error: response?.error?.message || 'Nao foi possivel entrar no time.' });
       });
     });
   }, []);
@@ -416,7 +440,9 @@ export function useSocketRoom(roomCode?: string, enabled = true): UseSocketRoomR
       submitAnswer,
       requestRematch,
       createQuiz,
+      createCustomContent,
       assignTeams,
+      chooseTeam,
       selectSofaPlayer,
       submitWrittenAnswer,
       onGameEvent,

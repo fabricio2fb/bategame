@@ -2,20 +2,16 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PlayerAvatar } from '@/components/PlayerAvatar';
 
 interface Player {
   id: string;
   name: string;
+  avatarUrl?: string;
   isHost: boolean;
   isCurrent: boolean;
   isBuzzerWinner: boolean;
   score: number;
-}
-
-const AVATAR_COLORS = ['#3B82F6', '#22C55E', '#EF4444', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
-
-function getInitials(name: string): string {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
 interface StagePlayersProps {
@@ -37,7 +33,6 @@ export const StagePlayers: React.FC<StagePlayersProps> = ({ players, currentPlay
       <div className="flex items-end justify-center gap-3 sm:gap-5 px-4 pb-4">
         <AnimatePresence>
           {players.map((player, idx) => {
-            const color = AVATAR_COLORS[player.name.length % AVATAR_COLORS.length];
             const isWinner = player.id === winnerId;
             const isCurrent = player.id === currentPlayerId;
             const angle = ((idx - (players.length - 1) / 2) / players.length) * 60;
@@ -63,11 +58,10 @@ export const StagePlayers: React.FC<StagePlayersProps> = ({ players, currentPlay
                     isWinner ? 'ring-2 ring-[#F59E0B] ring-offset-2 ring-offset-transparent' : ''
                   } ${isCurrent ? 'ring-2 ring-[#3B82F6]/50' : ''}`}
                   style={{
-                    backgroundColor: color,
-                    boxShadow: isWinner ? `0 0 20px ${color}40` : '0 4px 12px rgba(0,0,0,0.15)',
+                    boxShadow: isWinner ? '0 0 20px rgba(245,158,11,0.35)' : '0 4px 12px rgba(0,0,0,0.15)',
                   }}
                 >
-                  {getInitials(player.name)}
+                  <PlayerAvatar name={player.name} avatarUrl={player.avatarUrl} className="h-full w-full rounded-2xl" textClassName="text-sm" />
                   {/* Buzzer tablet in front */}
                   {showNotification && (
                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}

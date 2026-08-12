@@ -4,9 +4,16 @@ export type RoomStatus =
   | 'question-visible'
   | 'buzzer-open'
   | 'player-selected'
+  | 'target-visible'
+  | 'running'
+  | 'letters-visible'
+  | 'writing'
+  | 'word-visible'
   | 'answering'
+  | 'voting'
   | 'answer-selected'
   | 'revealing'
+  | 'round-reveal'
   | 'correct'
   | 'wrong'
   | 'buzzer-reopening'
@@ -15,14 +22,25 @@ export type RoomStatus =
   | 'game-finished';
 
 export type GameMode = 'classic' | 'teams' | 'couch';
+export type TeamAssignmentMode = 'random' | 'manual';
+export type GameType =
+  | 'bateprimeiro'
+  | 'dado-de-forca'
+  | 'tres-letras'
+  | 'bate-o-tempo'
+  | 'qual-e-a-palavra'
+  | 'quem-chega-mais-perto';
 export type QuestionSource = 'official' | 'custom';
 export type AnswerType = 'multiple-choice' | 'written' | 'spoken';
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'mixed';
 export type RoomPrivacy = 'public' | 'private';
+export type ScoringMode = 'exact' | 'approximate';
+export type BoardSize = 'small' | 'medium' | 'large';
 
 export interface PlayerData {
   id: string;
   name: string;
+  avatarUrl?: string;
   score: number;
   isHost: boolean;
   isReady: boolean;
@@ -43,6 +61,20 @@ export interface Team {
 }
 
 export interface RoomSettings {
+  gameType?: GameType;
+  scoringMode?: ScoringMode;
+  targetTimeMode?: 'system' | 'manual';
+  targetTimeSeconds?: number;
+  targetTimeMinSeconds?: number;
+  targetTimeMaxSeconds?: number;
+  targetTimeRoundSeconds?: number[];
+  roundCount?: number;
+  category?: string;
+  roundTimeSeconds?: number;
+  votingTimeSeconds?: number;
+  endRoundOnFirstSubmit?: boolean;
+  boardSize?: BoardSize;
+  maxChargeSeconds?: number;
   gameMode: GameMode;
   questionSource: QuestionSource;
   answerMode: AnswerType | 'mixed';
@@ -55,7 +87,10 @@ export interface RoomSettings {
   wrongAnswerPenalty: number;
   allowRebound: boolean;
   teamTurnMode?: 'rotation' | 'free';
+  teamAssignmentMode?: TeamAssignmentMode;
   customQuizId?: string;
+  customContentId?: string;
+  customContentTitle?: string;
   teamCount?: number;
 }
 
@@ -106,7 +141,7 @@ export interface GameState {
   currentBuzzerWinnerId: string | null;
   currentTeamId?: string | null;
   blockedPlayerIds: string[];
-  scores: Array<{ playerId: string; name: string; score: number }>;
+  scores: Array<{ playerId: string; name: string; avatarUrl?: string; score: number }>;
   teamScores: Array<{ teamId: string; name: string; color: string; score: number; activePlayerId?: string }>;
   roundStartedAt: number | null;
   answerDeadlineAt?: number | null;
@@ -117,6 +152,7 @@ export interface GameState {
 export interface PublicRoom {
   code: string;
   name: string;
+  gameType: GameType;
   hostName: string;
   status: RoomStatus;
   settings: RoomSettings;

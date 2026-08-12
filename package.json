@@ -1,12 +1,13 @@
 {
   "name": "bateprimeiro-app",
   "version": "0.1.0",
-  "description": "BatePrimeiro: Quem bater primeiro responde.",
+  "description": "Tempale: jogos online multiplayer para jogar com amigos.",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
     "dev:web": "next dev -p 3001",
     "dev:server": "cd server && npm run dev",
+    "dev:local": "node scripts/dev-local.mjs",
     "build": "node scripts/build.mjs",
     "build:web": "next build",
     "build:server": "cd server && npm run build",
@@ -27,7 +28,7 @@
     "canvas-confetti": "^1.9.4",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.26.0",
-    "next": "16.2.11",
+    "next": "^16.3.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "socket.io-client": "^4.8.0"
@@ -38,7 +39,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "^16.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

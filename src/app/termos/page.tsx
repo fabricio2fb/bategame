@@ -1,123 +1,46 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
-import { Footer } from '@/components/Footer';
-import { Logo } from '@/components/Logo';
+import { HubInfoPage } from '@/components/HubInfoPage';
 
 export const metadata: Metadata = {
-  title: 'Termos de Uso | BatePrimeiro',
-  description: 'Consulte os termos de uso do BatePrimeiro.',
+  title: 'Termos de Uso',
+  description: 'Consulte os termos de uso do Tempale.',
 };
 
 const lastUpdated = '29 de julho de 2026';
 const contactInfo = 'Canal oficial de contato a configurar.';
 
+const sections = [
+  ['Aceitacao dos termos', 'Ao acessar ou jogar Tempale, voce concorda com estes Termos de Uso. Se nao concordar, nao utilize o hub.'],
+  ['Como o Tempale funciona', 'Tempale e um hub de jogos sociais. BatePrimeiro e o jogo de perguntas com buzzer; os demais jogos podem ter regras proprias dentro da mesma estrutura de salas.'],
+  ['Partidas online e locais', 'O jogo pode ser usado em partidas online, com sala, codigo e conexao em tempo real, ou em modo local quando disponivel. Cada modo pode ter configuracoes proprias.'],
+  ['Responsabilidades dos usuarios', 'Os usuarios sao responsaveis pelos nomes que escolhem, pelo uso dos codigos de sala e pela forma como participam das partidas. Nao use o servico para ofensas, fraude, abuso ou interrupcao proposital.'],
+  ['Conteudo das perguntas', 'Perguntas, palavras, valores, alternativas e explicacoes podem conter erros, ambiguidades ou informacoes desatualizadas. O recurso de reportar problema ajuda a revisar esse conteudo.'],
+  ['Disponibilidade do servico', 'O Tempale pode ficar indisponivel temporariamente por manutencao, falhas tecnicas, instabilidade de rede ou alteracoes futuras.'],
+  ['Alteracoes futuras', 'Estes termos podem ser atualizados para refletir mudancas no hub, nos jogos, em seus recursos ou em suas regras de uso.'],
+  ['Limitacao de responsabilidade', 'O Tempale e fornecido para entretenimento. Dentro dos limites permitidos pela legislacao aplicavel, nao nos responsabilizamos por perdas decorrentes de instabilidade, erros de conteudo ou uso inadequado.'],
+  ['Contato', contactInfo],
+];
+
 export default function TermsPage() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="h-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto h-full flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#3B82F6] rounded-xl">
-            <Logo />
-          </Link>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium text-[#64748B] hover:text-[#0F172A] bg-white border border-[#CBD5E1] rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-[#3B82F6]"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Voltar</span>
-          </Link>
+    <HubInfoPage
+      eyebrow="Tempale"
+      title="Termos de Uso"
+      description={`Ultima atualizacao: ${lastUpdated}. Leia as regras gerais para usar o hub, criar salas e participar das partidas.`}
+    >
+      <article className="rounded-[2rem] border border-white/72 bg-white/52 p-5 shadow-[0_28px_80px_rgba(15,23,42,0.20)] backdrop-blur-xl sm:p-8 lg:p-10">
+        <div className="grid gap-4 md:grid-cols-2">
+          {sections.map(([title, text], index) => (
+            <section key={title} className="rounded-3xl border border-white/70 bg-white/54 p-5 shadow-[0_14px_34px_rgba(15,23,42,0.10)]">
+              <span className="text-xs font-black uppercase tracking-[0.18em] text-[#3B82F6]">
+                {String(index + 1).padStart(2, '0')}
+              </span>
+              <h2 className="mt-2 text-lg font-black text-[#0F172A]">{title}</h2>
+              <p className="mt-2 text-sm font-semibold leading-relaxed text-[#475569]">{text}</p>
+            </section>
+          ))}
         </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex-1 w-full">
-        <article className="bg-white border-2 border-black/15 rounded-2xl p-6 sm:p-8 lg:p-10 shadow-sm">
-          <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6]">BatePrimeiro</p>
-            <h1 className="mt-2 text-3xl sm:text-4xl font-bold text-[#0F172A] tracking-tight">Termos de Uso</h1>
-            <p className="mt-3 text-sm text-[#64748B]">Ultima atualizacao: {lastUpdated}</p>
-          </div>
-
-          <div className="mt-8 space-y-7 text-sm sm:text-base text-[#475569] leading-relaxed">
-            <section>
-              <h2 className="text-lg font-bold text-[#0F172A]">1. Aceitacao dos termos</h2>
-              <p className="mt-2">
-                Ao acessar ou jogar BatePrimeiro, voce concorda com estes Termos de Uso. Se nao concordar,
-                nao utilize o jogo.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-[#0F172A]">2. Como o BatePrimeiro funciona</h2>
-              <p className="mt-2">
-                BatePrimeiro e um jogo de perguntas e respostas com buzzer. Quem bater primeiro recebe a vez
-                de responder, conforme as regras e configuracoes da partida.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-[#0F172A]">3. Partidas online e locais</h2>
-              <p className="mt-2">
-                O jogo pode ser usado em partidas online, com sala, codigo e conexao em tempo real, ou em modo
-                local, no mesmo aparelho. Cada modo pode ter configuracoes proprias, como categorias,
-                dificuldade, quantidade de perguntas e tempo de resposta.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-[#0F172A]">4. Responsabilidades dos usuarios</h2>
-              <p className="mt-2">
-                Os usuarios sao responsaveis pelos nomes que escolhem, pelo uso dos codigos de sala e pela
-                forma como participam das partidas. Nao use o jogo para praticar ofensas, fraude, abuso,
-                interrupcao proposital das partidas ou qualquer uso indevido do servico.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-[#0F172A]">5. Conteudo das perguntas</h2>
-              <p className="mt-2">
-                O banco de perguntas e preparado para o jogo, mas perguntas, alternativas, respostas e
-                explicacoes podem conter erros, ambiguidades ou informacoes desatualizadas. Quando existir a
-                opcao de reportar problema, o envio ajuda a identificar pontos que precisam de revisao.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-[#0F172A]">6. Disponibilidade do servico</h2>
-              <p className="mt-2">
-                O BatePrimeiro pode ficar indisponivel temporariamente por manutencao, falhas tecnicas,
-                instabilidade de rede ou alteracoes futuras. Nao garantimos disponibilidade continua ou livre
-                de interrupcoes.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-[#0F172A]">7. Alteracoes futuras</h2>
-              <p className="mt-2">
-                Estes termos podem ser atualizados para refletir mudancas no jogo, em seus recursos ou em suas
-                regras de uso. A versao publicada nesta pagina substitui versoes anteriores.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-[#0F172A]">8. Limitacao de responsabilidade</h2>
-              <p className="mt-2">
-                O BatePrimeiro e fornecido para entretenimento. Dentro dos limites permitidos pela legislacao
-                aplicavel, nao nos responsabilizamos por perdas decorrentes de instabilidade, erros em
-                perguntas, problemas de conexao, uso inadequado por participantes ou decisoes tomadas com base
-                no conteudo do jogo.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-[#0F172A]">9. Contato</h2>
-              <p className="mt-2">{contactInfo}</p>
-            </section>
-          </div>
-        </article>
-      </main>
-
-      <Footer />
-    </div>
+      </article>
+    </HubInfoPage>
   );
 }

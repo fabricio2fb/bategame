@@ -3,12 +3,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { PlayerData } from '@/lib/types';
-
-const AVATAR_COLORS = ['#3B82F6', '#22C55E', '#EF4444', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
-
-function getInitials(name: string): string {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-}
+import { PlayerAvatar } from './PlayerAvatar';
 
 interface PlayerRowProps {
   player: PlayerData;
@@ -18,16 +13,12 @@ interface PlayerRowProps {
 }
 
 export const PlayerRow: React.FC<PlayerRowProps> = ({ player, isCurrent, canRemove, onRemove }) => {
-  const colorIdx = player.name.length % AVATAR_COLORS.length;
   return (
     <div className={`flex items-center justify-between gap-3 p-3 rounded-xl transition-colors ${
       isCurrent ? 'bg-[#3B82F6]/5 border border-[#3B82F6]/20' : 'bg-[#F8FAFC] border border-[#CBD5E1]/60'
     }`}>
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm"
-          style={{ backgroundColor: AVATAR_COLORS[colorIdx] }}>
-          {getInitials(player.name)}
-        </div>
+        <PlayerAvatar name={player.name} avatarUrl={player.avatarUrl} className="h-10 w-10" textClassName="text-sm" />
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-sm font-semibold text-[#0F172A] truncate">{player.name}</span>

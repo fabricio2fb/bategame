@@ -3,10 +3,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Crown, Medal, User } from 'lucide-react';
+import { PlayerAvatar } from '@/components/PlayerAvatar';
 
 interface PlayerScore {
   id: string;
   name: string;
+  avatarUrl?: string;
   score: number;
   isCurrent: boolean;
   isLeader: boolean;
@@ -39,6 +41,7 @@ export const MobileScoreBar: React.FC<MobileScoreBarProps> = ({ players }) => {
                     : 'bg-white/5 text-white/50'
               }`}
             >
+              <PlayerAvatar name={p.name} avatarUrl={p.avatarUrl} className="h-4 w-4" textClassName="text-[7px]" />
               {p.isCurrent && <User className="w-2.5 h-2.5" />}
               {i === 0 && !p.isCurrent && <Crown className="w-2.5 h-2.5 text-amber-400" />}
               <span className="truncate max-w-[44px]">{p.name.split(' ')[0]}</span>

@@ -3,10 +3,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Crown, Medal, Award } from 'lucide-react';
+import { PlayerAvatar } from './PlayerAvatar';
 
 interface PodiumEntry {
   playerId: string;
   name: string;
+  avatarUrl?: string;
   score: number;
 }
 
@@ -15,12 +17,6 @@ interface PodiumProps {
   currentPlayerId: string | null;
   isTie: boolean;
   isWinner: boolean;
-}
-
-const AVATAR_COLORS = ['#3B82F6', '#22C55E', '#EF4444', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
-
-function getInitials(name: string): string {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
 export const Podium: React.FC<PodiumProps> = ({ winners, currentPlayerId, isTie, isWinner }) => {
@@ -33,8 +29,6 @@ export const Podium: React.FC<PodiumProps> = ({ winners, currentPlayerId, isTie,
     { height: 'h-40', order: 1, delay: 0, label: '1º' },
     { height: 'h-24', order: 3, delay: 0.4, label: '3º' },
   ];
-
-  const getColor = (name: string) => AVATAR_COLORS[name.length % AVATAR_COLORS.length];
 
   return (
     <div className="flex items-end justify-center gap-4 sm:gap-6 pt-4">
@@ -64,8 +58,8 @@ export const Podium: React.FC<PodiumProps> = ({ winners, currentPlayerId, isTie,
               className={`absolute -top-12 sm:-top-14 w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-lg border-4 ${
                 isFirst ? 'border-[#F59E0B]' : 'border-white'
               }`}
-              style={{ backgroundColor: getColor(player.name) }}>
-              {getInitials(player.name)}
+            >
+              <PlayerAvatar name={player.name} avatarUrl={player.avatarUrl} className="h-full w-full" textClassName="text-lg" />
             </motion.div>
             {/* Crown for 1st */}
             {isFirst && (

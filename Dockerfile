@@ -15,7 +15,7 @@ FROM node:22-alpine AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
-ENV CLIENT_URLS=https://bateprimeiro.vercel.app
+ENV CLIENT_URLS=https://tempale.online
 
 COPY --from=build /app/server/package*.json ./server/
 COPY --from=build /app/server/node_modules ./server/node_modules

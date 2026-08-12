@@ -1,7 +1,7 @@
 {
   "name": "bateprimeiro-server",
   "version": "1.0.0",
-  "description": "Servidor Socket.IO do BatePrimeiro.",
+  "description": "Servidor Socket.IO do Tempale.",
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",

@@ -117,12 +117,18 @@ test('34. Partida sofa nao tem navbar branca e sair fica no menu interno', () =>
   assert.match(header, /confirmLeaveOnExit/);
 });
 
-test('35. Site inicia conexao Socket.IO no layout e producao nao usa localhost', () => {
+test('35. Site inicia conexao Socket.IO apenas nas rotas em tempo real e producao nao usa localhost', () => {
   const layout = read('src/app/layout.tsx');
+  const lobbyLayout = read('src/app/bateprimeiro/layout.tsx');
+  const roomLayout = read('src/app/sala/layout.tsx');
+  const createLayout = read('src/app/criar-partida/layout.tsx');
   const bootstrap = read('src/components/SocketBootstrap.tsx');
   const socket = read('src/lib/socket.ts');
   const nextConfig = read('next.config.ts');
-  assert.match(layout, /<SocketBootstrap \/>/);
+  assert.doesNotMatch(layout, /<SocketBootstrap \/>/);
+  assert.match(lobbyLayout, /<SocketBootstrap \/>/);
+  assert.match(roomLayout, /<SocketBootstrap \/>/);
+  assert.match(createLayout, /<SocketBootstrap \/>/);
   assert.match(bootstrap, /getSocket\(\)/);
   assert.match(socket, /NEXT_PUBLIC_SOCKET_URL/);
   assert.match(socket, /process\.env\.NODE_ENV !== 'production'/);
@@ -152,8 +158,10 @@ test('4. Abrir link direto busca a sala por room:get', () => {
 
 test('5. Codigo inexistente mostra mensagem amigavel em vez de 404', () => {
   const page = read('src/app/sala/[codigo]/page.tsx');
-  assert.match(page, /Sala n.+o encontrada/s);
-  assert.match(page, /Tentar outro c/s);
+  const notFoundState = read('src/components/RoomNotFoundState.tsx');
+  assert.match(page, /<RoomNotFoundState/);
+  assert.match(notFoundState, /Sala n.+o encontrada/s);
+  assert.match(notFoundState, /Tentar outro c/s);
 });
 
 test('6. Codigo minusculo e normalizado', () => {
@@ -164,7 +172,8 @@ test('6. Codigo minusculo e normalizado', () => {
 
 test('7. Entrada por codigo usa a mesma rota oficial', () => {
   assert.match(read('src/app/entrar/page.tsx'), /router\.push\(getRoomPath\(roomCode\)\)/);
-  assert.match(read('src/app/page.tsx'), /router\.push\(getRoomPath\(code\)\)/);
+  assert.match(read('src/app/page.tsx'), /href="\/bateprimeiro"/);
+  assert.match(read('src/app/bateprimeiro/page.tsx'), /router\.push\(getRoomPath\(code\)\)/);
 });
 
 test('8. Parametro dinamico chega como codigo na pagina', () => {
@@ -209,7 +218,7 @@ test('13. Alternativas sao enviadas apenas pelo evento privado do jogador venced
 });
 
 test('14. Cliente limpa alternativas quando recebe estado publico', () => {
-  const page = read('src/app/partida/[codigo]/page.tsx');
+  const page = read('src/app/partida/bateprimeiro/[codigo]/page.tsx');
   assert.match(page, /setAlternatives\(state\.orderedAlternatives \?\? null\)/);
 });
 
@@ -224,7 +233,7 @@ test('15. Tempo de resposta da sala e configuravel e usado pelo servidor', () =>
 
 test('16. Menu da partida tem acoes reais e confirmacao de saida', () => {
   const header = read('src/components/partida1/GameHeader.tsx');
-  const page = read('src/app/partida/[codigo]/page.tsx');
+  const page = read('src/app/partida/bateprimeiro/[codigo]/page.tsx');
   assert.match(header, /Sair da partida/);
   assert.match(header, /Tem certeza de que deseja sair da partida/);
   assert.match(header, /Ver jogadores/);
@@ -235,12 +244,12 @@ test('16. Menu da partida tem acoes reais e confirmacao de saida', () => {
 
 test('17. Entrada direta usa nome e codigo no mesmo card', () => {
   const sidebar = read('src/components/SidebarPanels.tsx');
-  const home = read('src/app/page.tsx');
+  const lobby = read('src/app/bateprimeiro/page.tsx');
   assert.match(sidebar, /Seu nome/);
   assert.match(sidebar, /Codigo da sala/);
   assert.match(sidebar, /isJoining/);
   assert.match(sidebar, /normalizedName/);
-  assert.match(home, /joinRoom\(code, playerName\)/);
+  assert.match(lobby, /joinRoom\(code, playerName(?:, [^)]+)?\)/);
 });
 
 test('18. Servidor aplica regra 0 1 2 elegiveis apos falha', () => {
@@ -262,14 +271,14 @@ test('19. Timer de resposta usa tentativa para ignorar callbacks antigos', () =>
 });
 
 test('20. Historico da rodada fica oculto no mobile e preservado no desktop', () => {
-  const page = read('src/app/partida/[codigo]/page.tsx');
+  const page = read('src/app/partida/bateprimeiro/[codigo]/page.tsx');
   assert.doesNotMatch(page, /lg:hidden px-3 pb-14[\s\S]*<ActivityFeed/);
   assert.match(page, /hidden lg:flex lg:w-56 xl:w-64/);
   assert.match(page, /<ActivityFeed events=\{feedEvents\} \/>/);
 });
 
 test('21. Partida usa centralizacao mobile apenas nas fases sem alternativas', () => {
-  const page = read('src/app/partida/[codigo]/page.tsx');
+  const page = read('src/app/partida/bateprimeiro/[codigo]/page.tsx');
   assert.match(page, /shouldCenterMobile/);
   assert.match(page, /justify-center overflow-hidden py-4 lg:py-0/);
   assert.match(page, /justify-start overflow-y-auto/);
@@ -321,7 +330,7 @@ test('25. Payload inicial de perguntas nao envia resposta correta', () => {
 
 test('26. Jogo tem estrutura para reportar problema de pergunta', () => {
   const tablet = read('src/components/partida1/QuestionTablet.tsx');
-  const partida = read('src/app/partida/[codigo]/page.tsx');
+  const partida = read('src/app/partida/bateprimeiro/[codigo]/page.tsx');
   const server = read('server/src/index.ts');
   const couchRuntime = read('src/components/couch/CouchGameRuntime.tsx');
   assert.match(tablet, /Reportar problema/);

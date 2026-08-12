@@ -3,20 +3,16 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Crown, Medal, TrendingUp, Zap } from 'lucide-react';
+import { PlayerAvatar } from '@/components/PlayerAvatar';
 
 interface PlayerScore {
   id: string;
   name: string;
+  avatarUrl?: string;
   score: number;
   isCurrent: boolean;
   isLeader: boolean;
   justScored: boolean;
-}
-
-const AVATAR_COLORS = ['#3B82F6', '#22C55E', '#EF4444', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
-
-function getInitials(name: string): string {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
 interface ScoreboardPanelProps {
@@ -39,7 +35,6 @@ export const ScoreboardPanel: React.FC<ScoreboardPanelProps> = ({ players }) => 
       <div className="p-2 space-y-1">
         <AnimatePresence>
           {sorted.map((p, i) => {
-            const color = AVATAR_COLORS[p.name.length % AVATAR_COLORS.length];
             const gap = topScore - p.score;
             return (
               <motion.div
@@ -62,10 +57,7 @@ export const ScoreboardPanel: React.FC<ScoreboardPanelProps> = ({ players }) => 
                 </div>
 
                 {/* Avatar */}
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0"
-                  style={{ backgroundColor: color }}>
-                  {getInitials(p.name)}
-                </div>
+                <PlayerAvatar name={p.name} avatarUrl={p.avatarUrl} className="h-7 w-7" textClassName="text-[9px]" />
 
                 {/* Name */}
                 <div className="flex-1 min-w-0">

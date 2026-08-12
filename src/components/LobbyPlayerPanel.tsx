@@ -2,28 +2,33 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Crown, X, Shield } from 'lucide-react';
+import { Users, Crown, X } from 'lucide-react';
 import { PlayerData, Team } from '@/lib/types';
+import { PlayerAvatar } from './PlayerAvatar';
 
-const AVATAR_COLORS = ['#3B82F6', '#22C55E', '#EF4444', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
 const TEAM_COLORS = ['#3B82F6', '#EF4444', '#22C55E', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
-const TEAM_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-
-function getInitials(name: string): string {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-}
 
 interface LobbyPlayerPanelProps {
   players: PlayerData[];
   currentPlayerId: string | null;
   isHost: boolean;
   maxPlayers: number;
+  accentColor?: string;
   onRemovePlayer: (playerId: string) => void;
   showTeams?: boolean;
   teams?: Team[];
 }
 
-export const LobbyPlayerPanel: React.FC<LobbyPlayerPanelProps> = ({ players, currentPlayerId, isHost, maxPlayers, onRemovePlayer, showTeams, teams }) => {
+export const LobbyPlayerPanel: React.FC<LobbyPlayerPanelProps> = ({
+  players,
+  currentPlayerId,
+  isHost,
+  maxPlayers,
+  accentColor = '#3B82F6',
+  onRemovePlayer,
+  showTeams,
+  teams,
+}) => {
   const readyCount = players.filter(p => p.isReady && !p.isHost).length;
   const nonHostCount = players.filter(p => !p.isHost).length;
   const getTeamById = (id?: string) => teams?.find(t => t.id === id);
@@ -37,7 +42,10 @@ export const LobbyPlayerPanel: React.FC<LobbyPlayerPanelProps> = ({ players, cur
         </div>
         <div className="flex items-center gap-2 mt-1.5">
           <div className="flex-1 h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
-            <div className="h-full bg-[#3B82F6] rounded-full transition-all duration-500" style={{ width: `${(players.length / maxPlayers) * 100}%` }} />
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${(players.length / maxPlayers) * 100}%`, backgroundColor: accentColor }}
+            />
           </div>
           <span className="text-[11px] text-[#64748B] font-medium">
             {readyCount}/{nonHostCount} prontos
@@ -47,7 +55,6 @@ export const LobbyPlayerPanel: React.FC<LobbyPlayerPanelProps> = ({ players, cur
       <div className="p-3 space-y-1.5 max-h-[360px] overflow-y-auto">
         <AnimatePresence initial={false}>
           {players.map((player, idx) => {
-            const colorIdx = player.name.length % AVATAR_COLORS.length;
             const isCurrent = player.id === currentPlayerId;
             return (
               <motion.div
@@ -57,14 +64,13 @@ export const LobbyPlayerPanel: React.FC<LobbyPlayerPanelProps> = ({ players, cur
                 exit={{ opacity: 0, x: 20, scale: 0.95 }}
                 transition={{ duration: 0.2, delay: idx * 0.03 }}
                 className={`flex items-center justify-between gap-2 p-2.5 rounded-xl transition-all ${
-                  isCurrent ? 'bg-[#3B82F6]/8 ring-1 ring-[#3B82F6]/25' : player.isHost ? 'bg-[#F59E0B]/5 ring-1 ring-[#F59E0B]/15' : 'hover:bg-[#F8FAFC]'
-                }`}>
+                  player.isHost ? 'bg-[#F59E0B]/5 ring-1 ring-[#F59E0B]/15' : 'hover:bg-[#F8FAFC]'
+                }`}
+                style={isCurrent ? { backgroundColor: `${accentColor}14`, boxShadow: `inset 0 0 0 1px ${accentColor}40` } : undefined}
+              >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="relative shrink-0">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm"
-                      style={{ backgroundColor: AVATAR_COLORS[colorIdx] }}>
-                      {getInitials(player.name)}
-                    </div>
+                    <PlayerAvatar name={player.name} avatarUrl={player.avatarUrl} />
                     {player.isHost && (
                       <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#F59E0B] rounded-full flex items-center justify-center shadow-sm">
                         <Crown className="w-2.5 h-2.5 text-white" />
@@ -77,7 +83,11 @@ export const LobbyPlayerPanel: React.FC<LobbyPlayerPanelProps> = ({ players, cur
                   <div className="min-w-0">
                     <div className="flex items-center gap-1">
                       <span className="text-sm font-semibold text-[#0F172A] truncate">{player.name}</span>
-                      {isCurrent && <span className="text-[10px] font-medium text-[#3B82F6] bg-[#3B82F6]/10 px-1.5 py-0.5 rounded">Você</span>}
+                      {isCurrent && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded" style={{ backgroundColor: `${accentColor}18`, color: accentColor }}>
+                          Voce
+                        </span>
+                      )}
                       {showTeams && player.teamId && (() => {
                         const team = getTeamById(player.teamId);
                         const color = team?.color || TEAM_COLORS[0];

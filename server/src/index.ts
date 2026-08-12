@@ -8,12 +8,27 @@ import * as path from 'path';
 import { roomManager } from './RoomManager';
 import { questionManager } from './QuestionManager';
 import { gameManager } from './GameManager';
+import { GAME_REGISTRY } from './gameRegistry';
+import { quemChegaMaisPertoGameManager } from './games/quemChegaMaisPerto/QuemChegaMaisPertoGameManager';
+import { qualEAPalavraGameManager } from './games/qualEAPalavra/QualEAPalavraGameManager';
+import { bateOTempoGameManager } from './games/bateOTempo/BateOTempoGameManager';
+import { tresLetrasGameManager } from './games/tresLetras/TresLetrasGameManager';
+import { isValidTresLetrasCombination, normalizeTresLetrasCombination } from './games/tresLetras/letters';
 import { validateWrittenAnswer } from './validateAnswer';
-import { Player, GameRoom, RoomSettings, RoomPrivacy, Difficulty, AnswerType, GameMode, QuestionSource, Question } from './types';
+import { Player, GameRoom, RoomSettings, RoomPrivacy, Difficulty, AnswerType, GameMode, GameType, QuestionSource, Question, ScoringMode } from './types';
 import { isValidRoomCode, normalizeRoomCode } from './roomCode';
 
 function isValidQuestionCount(v: any): v is 10 | 15 | 20 | 30 {
   return [10, 15, 20, 30].includes(v);
+}
+function isValidRoundCount(v: any): v is number {
+  return Number.isInteger(v) && v >= 1 && v <= 20;
+}
+function isValidTargetTimeSeconds(v: any): v is number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 1 && v <= 300;
+}
+function isValidRoundTimeSeconds(v: any): v is number {
+  return Number.isInteger(v) && v >= 5 && v <= 180;
 }
 function isValidMaxPlayers(v: any): v is 4 | 6 | 8 | 12 | 16 {
   return [4, 6, 8, 12, 16].includes(v);
@@ -33,6 +48,18 @@ function isValidPrivacy(v: any): v is RoomPrivacy {
 function isValidGameMode(v: any): v is GameMode {
   return ['classic', 'teams', 'couch'].includes(v);
 }
+function isValidGameType(v: any): v is GameType {
+  return ['bateprimeiro', 'dado-de-forca', 'tres-letras', 'bate-o-tempo', 'qual-e-a-palavra', 'quem-chega-mais-perto'].includes(v);
+}
+function isValidScoringMode(v: any): v is ScoringMode {
+  return ['exact', 'approximate'].includes(v);
+}
+function isValidBoardSize(v: any): v is 'small' | 'medium' | 'large' {
+  return ['small', 'medium', 'large'].includes(v);
+}
+function isValidTeamAssignmentMode(v: any): v is 'random' | 'manual' {
+  return ['random', 'manual'].includes(v);
+}
 function isValidQuestionSource(v: any): v is QuestionSource {
   return ['official', 'custom'].includes(v);
 }
@@ -40,6 +67,117 @@ function isValidQuestionSource(v: any): v is QuestionSource {
 function generateId(): string { return crypto.randomUUID(); }
 function generateToken(): string { return crypto.randomBytes(32).toString('hex'); }
 function normalizeName(name: string): string { return name.trim().slice(0, 40); }
+
+const AVATAR_MAX_BYTES = 300_000;
+const AVATAR_MAX_DIMENSION = 1024;
+const AVATAR_ROOM_MAX_BYTES = 2_000_000;
+
+function sanitizeAvatarUrl(value: unknown, room?: GameRoom): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const avatarUrl = value.trim();
+  if (!avatarUrl) return undefined;
+  if (/^\/avatar-game\/[a-z0-9_-]+\.png$/i.test(avatarUrl)) return avatarUrl;
+  const avatar = parseCustomAvatarDataUrl(avatarUrl);
+  if (avatar && (!room || getRoomCustomAvatarBytes(room) + avatar.bytes <= AVATAR_ROOM_MAX_BYTES)) {
+    return avatarUrl;
+  }
+  return undefined;
+}
+
+function parseCustomAvatarDataUrl(value: string): { bytes: number; format: 'png' | 'jpeg' | 'webp'; width: number; height: number } | null {
+  const match = /^data:image\/(png|jpe?g|webp);base64,([a-z0-9+/=]+)$/i.exec(value);
+  if (!match) return null;
+
+  const format = match[1].toLowerCase() === 'jpg' ? 'jpeg' : match[1].toLowerCase() as 'png' | 'jpeg' | 'webp';
+  const payload = match[2];
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(payload, 'base64');
+  } catch {
+    return null;
+  }
+  if (buffer.length === 0 || buffer.length > AVATAR_MAX_BYTES) return null;
+
+  const dimensions = getImageDimensions(buffer, format);
+  if (!dimensions) return null;
+  if (dimensions.width < 1 || dimensions.height < 1) return null;
+  if (dimensions.width > AVATAR_MAX_DIMENSION || dimensions.height > AVATAR_MAX_DIMENSION) return null;
+
+  return { bytes: buffer.length, format, ...dimensions };
+}
+
+function getImageDimensions(buffer: Buffer, declaredFormat: 'png' | 'jpeg' | 'webp'): { width: number; height: number } | null {
+  if (declaredFormat === 'png') return getPngDimensions(buffer);
+  if (declaredFormat === 'jpeg') return getJpegDimensions(buffer);
+  return getWebpDimensions(buffer);
+}
+
+function getPngDimensions(buffer: Buffer): { width: number; height: number } | null {
+  if (buffer.length < 24) return null;
+  if (!buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return null;
+  if (buffer.toString('ascii', 12, 16) !== 'IHDR') return null;
+  return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+
+function getJpegDimensions(buffer: Buffer): { width: number; height: number } | null {
+  if (buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) return null;
+  let offset = 2;
+  while (offset + 9 < buffer.length) {
+    if (buffer[offset] !== 0xff) return null;
+    const marker = buffer[offset + 1];
+    offset += 2;
+    if (marker === 0xd9 || marker === 0xda) return null;
+    if (offset + 2 > buffer.length) return null;
+    const length = buffer.readUInt16BE(offset);
+    if (length < 2 || offset + length > buffer.length) return null;
+    if ((marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) || (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf)) {
+      return { height: buffer.readUInt16BE(offset + 3), width: buffer.readUInt16BE(offset + 5) };
+    }
+    offset += length;
+  }
+  return null;
+}
+
+function getWebpDimensions(buffer: Buffer): { width: number; height: number } | null {
+  if (buffer.length < 30) return null;
+  if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WEBP') return null;
+  const chunk = buffer.toString('ascii', 12, 16);
+  if (chunk === 'VP8X' && buffer.length >= 30) {
+    return {
+      width: 1 + buffer.readUIntLE(24, 3),
+      height: 1 + buffer.readUIntLE(27, 3),
+    };
+  }
+  if (chunk === 'VP8 ' && buffer.length >= 30) {
+    if (buffer[23] !== 0x9d || buffer[24] !== 0x01 || buffer[25] !== 0x2a) return null;
+    return {
+      width: buffer.readUInt16LE(26) & 0x3fff,
+      height: buffer.readUInt16LE(28) & 0x3fff,
+    };
+  }
+  if (chunk === 'VP8L' && buffer.length >= 25) {
+    if (buffer[20] !== 0x2f) return null;
+    const bits = buffer.readUInt32LE(21);
+    return {
+      width: (bits & 0x3fff) + 1,
+      height: ((bits >> 14) & 0x3fff) + 1,
+    };
+  }
+  return null;
+}
+
+function getCustomAvatarBytes(value?: string): number {
+  if (!value) return 0;
+  return parseCustomAvatarDataUrl(value)?.bytes ?? 0;
+}
+
+function getRoomCustomAvatarBytes(room: GameRoom): number {
+  let total = 0;
+  for (const player of room.players.values()) {
+    total += getCustomAvatarBytes(player.avatarUrl);
+  }
+  return total;
+}
 
 const QUESTION_REPORT_REASONS = new Set([
   'resposta incorreta',
@@ -63,17 +201,70 @@ function appendQuestionReport(report: {
   fs.appendFileSync(QUESTION_REPORTS_PATH, `${JSON.stringify({ ...report, date: new Date().toISOString() })}\n`, 'utf-8');
 }
 
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-function checkRateLimit(socketId: string, maxCalls: number = 10, windowMs: number = 1000): boolean {
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+  violations: number;
+  blockedUntil: number;
+}
+
+const rateLimitMap = new Map<string, RateLimitEntry>();
+
+function normalizeIp(value: unknown): string {
+  if (typeof value !== 'string') return 'unknown';
+  const first = value.split(',')[0]?.trim() || 'unknown';
+  return first.startsWith('::ffff:') ? first.slice(7) : first;
+}
+
+function getSocketIp(socket: import('socket.io').Socket): string {
+  const forwardedFor = socket.handshake.headers['x-forwarded-for'];
+  const realIp = socket.handshake.headers['x-real-ip'];
+  const cfConnectingIp = socket.handshake.headers['cf-connecting-ip'];
+  return normalizeIp(cfConnectingIp || realIp || forwardedFor || socket.handshake.address);
+}
+
+function checkRateLimitKey(key: string, maxCalls: number, windowMs: number, blockBaseMs = 0): boolean {
   const now = Date.now();
-  const entry = rateLimitMap.get(socketId);
+  const entry = rateLimitMap.get(key);
+  if (entry?.blockedUntil && entry.blockedUntil > now) return false;
   if (!entry || entry.resetAt < now) {
-    rateLimitMap.set(socketId, { count: 1, resetAt: now + windowMs });
+    rateLimitMap.set(key, {
+      count: 1,
+      resetAt: now + windowMs,
+      violations: entry?.violations || 0,
+      blockedUntil: 0,
+    });
     return true;
   }
-  if (entry.count >= maxCalls) return false;
+  if (entry.count >= maxCalls) {
+    entry.violations += 1;
+    if (blockBaseMs > 0) {
+      entry.blockedUntil = now + Math.min(60_000, blockBaseMs * Math.pow(2, Math.min(entry.violations - 1, 5)));
+    }
+    return false;
+  }
   entry.count++;
   return true;
+}
+
+function checkRateLimit(socketId: string, maxCalls: number = 10, windowMs: number = 1000): boolean {
+  return checkRateLimitKey(`socket:${socketId}`, maxCalls, windowMs);
+}
+
+function checkIpRateLimit(socket: import('socket.io').Socket, bucket: string, maxCalls: number, windowMs: number, blockBaseMs = 2_000): boolean {
+  return checkRateLimitKey(`ip:${getSocketIp(socket)}:${bucket}`, maxCalls, windowMs, blockBaseMs);
+}
+
+function checkSocketAndIpRateLimit(
+  socket: import('socket.io').Socket,
+  bucket: string,
+  socketMaxCalls: number,
+  socketWindowMs: number,
+  ipMaxCalls: number,
+  ipWindowMs: number,
+): boolean {
+  return checkRateLimit(socket.id, socketMaxCalls, socketWindowMs)
+    && checkIpRateLimit(socket, bucket, ipMaxCalls, ipWindowMs);
 }
 
 questionManager.loadAll();
@@ -83,7 +274,7 @@ const httpServer = createServer(app);
 
 const clientUrls = process.env.CLIENT_URLS
   ? process.env.CLIENT_URLS.split(',').map(s => s.trim())
-  : ['https://bateprimeiro.vercel.app', 'http://localhost:3001'];
+  : ['https://tempale.online', 'http://localhost:3001'];
 if (process.env.NODE_ENV !== 'production') {
   clientUrls.push('http://localhost:3000');
 }
@@ -105,14 +296,14 @@ app.use(cors({ origin: clientUrls, credentials: true }));
 app.get('/', (_req, res) => {
   res.status(200).json({
     ok: true,
-    service: 'bateprimeiro-socket',
-    message: 'BatePrimeiro Socket.IO server is running.',
+    service: 'tempale-socket',
+    message: 'Tempale Socket.IO server is running.',
   });
 });
 app.get('/health', (_req, res) => {
   res.status(200).json({
     ok: true,
-    service: 'bateprimeiro-socket',
+    service: 'tempale-socket',
     questionsLoaded: questionManager.getTotalLoaded(),
   });
 });
@@ -141,6 +332,18 @@ io.on('connection', (socket) => {
     address: socket.handshake.address,
   });
 
+  socket.use((packet, next) => {
+    const eventName = typeof packet[0] === 'string' ? packet[0] : 'unknown';
+    if (!checkIpRateLimit(socket, 'socket-events', 80, 1000, 5_000)) {
+      const maybeCallback = packet[packet.length - 1];
+      if (typeof maybeCallback === 'function') {
+        maybeCallback({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisicoes.' } });
+      }
+      return next(new Error(`RATE_LIMIT:${eventName}`));
+    }
+    next();
+  });
+
   socket.conn.on('upgrade', (transport) => {
     console.log('[socket.io] transport upgraded', {
       id: socket.id,
@@ -149,11 +352,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room:create', (data, callback) => {
-    if (!checkRateLimit(socket.id, 5, 10000)) {
+    if (!checkSocketAndIpRateLimit(socket, 'room:create', 5, 10000, 20, 60000)) {
       return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisições.' } });
     }
     try {
       const { playerName, roomName, settings } = data;
+      const avatarUrl = sanitizeAvatarUrl(data?.avatarUrl);
+      if (data?.avatarUrl && !avatarUrl) {
+        return callback?.({ success: false, error: { code: 'INVALID_AVATAR', message: 'Avatar invalido ou muito grande.' } });
+      }
       if (!playerName || typeof playerName !== 'string' || playerName.trim().length < 2 || playerName.trim().length > 20) {
         return callback?.({ success: false, error: { code: 'INVALID_PLAYER_NAME', message: 'Nome deve ter entre 2 e 20 caracteres.' } });
       }
@@ -165,6 +372,58 @@ io.on('connection', (socket) => {
       }
 
       const gameMode: GameMode = isValidGameMode(settings.gameMode) ? settings.gameMode : 'classic';
+      const gameType: GameType = isValidGameType(settings.gameType) ? settings.gameType : 'bateprimeiro';
+      if ((gameType === 'quem-chega-mais-perto' || gameType === 'qual-e-a-palavra' || gameType === 'bate-o-tempo' || gameType === 'tres-letras') && gameMode === 'couch') {
+        const gameLabel =
+          gameType === 'qual-e-a-palavra'
+            ? 'Qual e a Palavra'
+            : gameType === 'bate-o-tempo'
+              ? 'Bate o Tempo'
+              : gameType === 'tres-letras'
+                ? '3 Letras'
+                : 'Quem Chega Mais Perto';
+        return callback?.({
+          success: false,
+          error: {
+            code: 'INVALID_GAME_MODE',
+            message: `${gameLabel} aceita apenas os modos Individual ou Equipes.`,
+          },
+        });
+      }
+      const scoringMode: ScoringMode | undefined =
+        gameType === 'qual-e-a-palavra' || gameType === 'tres-letras'
+          ? undefined
+          : isValidScoringMode(settings.scoringMode)
+            ? settings.scoringMode
+            : undefined;
+      const teamAssignmentMode = isValidTeamAssignmentMode(settings.teamAssignmentMode) ? settings.teamAssignmentMode : 'random';
+      const roundCount = gameType !== 'bateprimeiro' ? (isValidRoundCount(settings.roundCount) ? settings.roundCount : 8) : undefined;
+      const hasCategoryRoundConfig = gameType === 'qual-e-a-palavra' || gameType === 'quem-chega-mais-perto';
+      const hasCustomContent = hasCategoryRoundConfig || gameType === 'tres-letras';
+      const isDadoDeForca = gameType === 'dado-de-forca';
+      const category = typeof settings.category === 'string' && settings.category.trim().length > 0
+        ? normalizeName(settings.category)
+        : Array.isArray(settings.categories) && typeof settings.categories[0] === 'string'
+          ? normalizeName(settings.categories[0])
+          : 'Tudo misturado';
+      const roundTimeSeconds = isValidRoundTimeSeconds(settings.roundTimeSeconds) ? settings.roundTimeSeconds : 30;
+      const boardSize = isValidBoardSize(settings.boardSize) ? settings.boardSize : 'medium';
+      const maxChargeSeconds =
+        Number.isInteger(settings.maxChargeSeconds) && settings.maxChargeSeconds >= 1 && settings.maxChargeSeconds <= 10
+          ? settings.maxChargeSeconds
+          : 4;
+      const targetTimeMode = settings.targetTimeMode === 'manual' || settings.targetTimeMode === 'system' ? settings.targetTimeMode : undefined;
+      const targetTimeMinSeconds = isValidTargetTimeSeconds(settings.targetTimeMinSeconds) ? settings.targetTimeMinSeconds : 5;
+      const targetTimeMaxSeconds = isValidTargetTimeSeconds(settings.targetTimeMaxSeconds) ? settings.targetTimeMaxSeconds : 30;
+      const validTargetTimeRange =
+        targetTimeMinSeconds < targetTimeMaxSeconds
+          ? { targetTimeMinSeconds, targetTimeMaxSeconds }
+          : { targetTimeMinSeconds: 5, targetTimeMaxSeconds: 30 };
+      const targetTimeRoundSeconds = Array.isArray(settings.targetTimeRoundSeconds)
+        ? settings.targetTimeRoundSeconds
+            .slice(0, roundCount || 8)
+            .filter((value: unknown): value is number => isValidTargetTimeSeconds(value))
+        : undefined;
       const questionSource: QuestionSource = isValidQuestionSource(settings.questionSource) ? settings.questionSource : 'official';
       const answerMode = isValidAnswerMode(settings.answerMode) ? settings.answerMode : 'multiple-choice';
 
@@ -173,12 +432,22 @@ io.on('connection', (socket) => {
       }
 
       if (questionSource === 'custom') {
-        if (!settings.customQuizId) {
-          return callback?.({ success: false, error: { code: 'MISSING_CUSTOM_QUIZ', message: 'Quiz não fornecido.' } });
-        }
-        const quiz = roomManager.getCustomQuiz(settings.customQuizId);
-        if (!quiz) {
-          return callback?.({ success: false, error: { code: 'CUSTOM_QUIZ_NOT_FOUND', message: 'Quiz não encontrado.' } });
+        if (hasCustomContent) {
+          if (!settings.customContentId) {
+            return callback?.({ success: false, error: { code: 'MISSING_CUSTOM_CONTENT', message: 'Conteudo personalizado nao fornecido.' } });
+          }
+          const content = roomManager.getCustomQuiz(settings.customContentId);
+          if (!content || content.gameType !== gameType) {
+            return callback?.({ success: false, error: { code: 'CUSTOM_CONTENT_NOT_FOUND', message: 'Conteudo personalizado nao encontrado.' } });
+          }
+        } else {
+          if (!settings.customQuizId) {
+            return callback?.({ success: false, error: { code: 'MISSING_CUSTOM_QUIZ', message: 'Quiz nao fornecido.' } });
+          }
+          const quiz = roomManager.getCustomQuiz(settings.customQuizId);
+          if (!quiz) {
+            return callback?.({ success: false, error: { code: 'CUSTOM_QUIZ_NOT_FOUND', message: 'Quiz nao encontrado.' } });
+          }
         }
       } else {
         if (!Array.isArray(settings.categories) || settings.categories.length === 0) {
@@ -187,19 +456,43 @@ io.on('connection', (socket) => {
       }
 
       const finalSettings: RoomSettings = {
+        gameType,
+        scoringMode,
+        targetTimeMode,
+        targetTimeSeconds: isValidTargetTimeSeconds(settings.targetTimeSeconds) ? settings.targetTimeSeconds : undefined,
+        targetTimeMinSeconds: gameType === 'bate-o-tempo' && targetTimeMode !== 'manual' ? validTargetTimeRange.targetTimeMinSeconds : undefined,
+        targetTimeMaxSeconds: gameType === 'bate-o-tempo' && targetTimeMode !== 'manual' ? validTargetTimeRange.targetTimeMaxSeconds : undefined,
+        targetTimeRoundSeconds:
+          gameType === 'bate-o-tempo' && targetTimeMode === 'manual' && targetTimeRoundSeconds?.length === roundCount
+            ? targetTimeRoundSeconds
+            : undefined,
         gameMode,
         questionSource,
         answerMode,
         questionCount: isValidQuestionCount(settings.questionCount) ? settings.questionCount : 15,
+        roundCount,
+        category: hasCategoryRoundConfig ? category : undefined,
         difficulty: isValidDifficulty(settings.difficulty) ? settings.difficulty : 'mixed',
-        categories: settings.categories || ['Tudo misturado'],
+        categories: hasCategoryRoundConfig ? [category] : settings.categories || ['Tudo misturado'],
         maxPlayers: isValidMaxPlayers(settings.maxPlayers) ? settings.maxPlayers : 8,
-        answerTimeSeconds: isValidAnswerTimeSeconds(settings.answerTimeSeconds) ? settings.answerTimeSeconds : 15,
+        answerTimeSeconds: hasCategoryRoundConfig
+          ? roundTimeSeconds
+          : isValidAnswerTimeSeconds(settings.answerTimeSeconds)
+            ? settings.answerTimeSeconds
+            : 15,
+        roundTimeSeconds: hasCategoryRoundConfig || gameType === 'bate-o-tempo' ? roundTimeSeconds : undefined,
+        votingTimeSeconds: undefined,
+        endRoundOnFirstSubmit: gameType === 'tres-letras' ? settings.endRoundOnFirstSubmit === true : undefined,
+        boardSize: isDadoDeForca ? boardSize : undefined,
+        maxChargeSeconds: isDadoDeForca ? maxChargeSeconds : undefined,
         privacy: isValidPrivacy(settings.privacy) ? settings.privacy : 'public',
         wrongAnswerPenalty: typeof settings.wrongAnswerPenalty === 'number' ? settings.wrongAnswerPenalty : 0,
         allowRebound: settings.allowRebound !== false,
         teamTurnMode: settings.teamTurnMode || 'rotation',
+        teamAssignmentMode: gameMode === 'teams' ? teamAssignmentMode : undefined,
         customQuizId: settings.customQuizId,
+        customContentId: hasCustomContent && questionSource === 'custom' ? settings.customContentId : undefined,
+        customContentTitle: hasCustomContent && questionSource === 'custom' ? normalizeName(settings.customContentTitle || 'Personalizado') : undefined,
         teamCount: settings.teamCount,
       };
 
@@ -212,6 +505,7 @@ io.on('connection', (socket) => {
         token: playerToken,
         socketId: socket.id,
         name: normalizeName(playerName),
+        avatarUrl,
         score: 0,
         isHost: true,
         isReady: false,
@@ -224,7 +518,7 @@ io.on('connection', (socket) => {
 
       if (gameMode === 'teams') {
         const teamCount = finalSettings.teamCount || 2;
-        gameManager.assignTeams(room, teamCount);
+        gameManager.assignTeams(room, teamCount, finalSettings.teamAssignmentMode || 'random');
       }
 
       socket.join(`room:${code}`);
@@ -239,11 +533,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('room:join', (data, callback) => {
-    if (!checkRateLimit(socket.id, 10, 10000)) {
+    if (!checkSocketAndIpRateLimit(socket, 'room:join', 10, 10000, 60, 60000)) {
       return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisições.' } });
     }
     try {
       const { roomCode, playerName } = data;
+      const rawAvatarUrl = data?.avatarUrl;
       if (!isValidRoomCode(roomCode)) {
         return callback?.({ success: false, error: { code: 'INVALID_ROOM_CODE', message: 'Código inválido.' } });
       }
@@ -256,6 +551,11 @@ io.on('connection', (socket) => {
       if (room.status !== 'lobby') return callback?.({ success: false, error: { code: 'GAME_ALREADY_STARTED', message: 'Partida já começou.' } });
       if (room.players.size >= room.settings.maxPlayers) return callback?.({ success: false, error: { code: 'ROOM_FULL', message: 'Sala cheia.' } });
 
+      const avatarUrl = sanitizeAvatarUrl(rawAvatarUrl, room);
+      if (rawAvatarUrl && !avatarUrl) {
+        return callback?.({ success: false, error: { code: 'INVALID_AVATAR', message: 'Avatar invalido, muito grande ou limite da sala atingido.' } });
+      }
+
       const normalizedName = normalizeName(playerName);
       if (Array.from(room.players.values()).some(p => p.name.toLowerCase() === normalizedName.toLowerCase())) {
         return callback?.({ success: false, error: { code: 'PLAYER_NAME_TAKEN', message: 'Nome já em uso.' } });
@@ -265,10 +565,11 @@ io.on('connection', (socket) => {
       const playerToken = generateToken();
       const player: Player = {
         id: playerId, token: playerToken, socketId: socket.id, name: normalizedName,
+        avatarUrl,
         score: 0, isHost: false, isReady: false, isConnected: true, joinedAt: Date.now(),
       };
 
-      if (room.settings.gameMode === 'teams' && room.teams.length > 0) {
+      if (room.settings.gameMode === 'teams' && room.teams.length > 0 && room.settings.teamAssignmentMode !== 'manual') {
         const smallestTeam = room.teams.reduce((min, t) => t.playerIds.length < min.playerIds.length ? t : min, room.teams[0]);
         player.teamId = smallestTeam.id;
         smallestTeam.playerIds.push(playerId);
@@ -345,7 +646,7 @@ io.on('connection', (socket) => {
 
   socket.on('team:assign', (data, callback) => {
     try {
-      const { roomCode, teamCount, teamNames, teamColors } = data;
+      const { roomCode, teamCount, teamNames, teamColors, teamAssignmentMode } = data;
       const room = roomManager.getRoom(roomCode?.toUpperCase());
       if (!room) return callback?.({ success: false, error: { code: 'ROOM_NOT_FOUND', message: 'Sala não encontrada.' } });
       const player = findPlayerBySocket(room, socket.id);
@@ -353,7 +654,10 @@ io.on('connection', (socket) => {
       if (room.status !== 'lobby') return callback?.({ success: false, error: { code: 'GAME_STARTED', message: 'Partida já começou.' } });
       const tc = Math.min(Math.max(teamCount || 2, 2), 8);
       room.settings.teamCount = tc;
-      gameManager.assignTeams(room, tc);
+      if (isValidTeamAssignmentMode(teamAssignmentMode)) {
+        room.settings.teamAssignmentMode = teamAssignmentMode;
+      }
+      gameManager.assignTeams(room, tc, room.settings.teamAssignmentMode || 'random');
       if (teamNames) {
         for (let i = 0; i < Math.min(teamNames.length, room.teams.length); i++) {
           if (teamNames[i]) room.teams[i].name = teamNames[i];
@@ -372,6 +676,32 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('team:choose', (data, callback) => {
+    try {
+      const { roomCode, teamId } = data;
+      const room = roomManager.getRoom(roomCode?.toUpperCase());
+      if (!room) return callback?.({ success: false, error: { code: 'ROOM_NOT_FOUND', message: 'Sala nÃ£o encontrada.' } });
+      if (room.status !== 'lobby') return callback?.({ success: false, error: { code: 'GAME_STARTED', message: 'Partida jÃ¡ comeÃ§ou.' } });
+      if (room.settings.gameMode !== 'teams' || room.settings.teamAssignmentMode !== 'manual') {
+        return callback?.({ success: false, error: { code: 'MANUAL_TEAMS_DISABLED', message: 'Escolha manual de times nao esta ativa.' } });
+      }
+
+      const player = findPlayerBySocket(room, socket.id);
+      if (!player) return callback?.({ success: false, error: { code: 'PLAYER_NOT_FOUND', message: 'Jogador nÃ£o encontrado.' } });
+
+      const result = gameManager.movePlayerToTeam(room, player.id, teamId);
+      if (!result.success) {
+        return callback?.({ success: false, error: { code: 'TEAM_JOIN_FAILED', message: result.error || 'Nao foi possivel entrar no time.' } });
+      }
+
+      room.lastActivityAt = Date.now();
+      io.to(`room:${room.code}`).emit('room:updated', roomManager.getRoomState(room));
+      callback?.({ success: true });
+    } catch (err) {
+      callback?.({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Erro interno.' } });
+    }
+  });
+
   socket.on('team:move-player', (data, callback) => {
     try {
       const { roomCode, playerId, targetTeamId } = data;
@@ -384,11 +714,10 @@ io.on('connection', (socket) => {
       const newTeam = room.teams.find(t => t.id === targetTeamId);
       if (!newTeam) return callback?.({ success: false, error: { code: 'TEAM_NOT_FOUND', message: 'Time não encontrado.' } });
 
-      for (const t of room.teams) {
-        t.playerIds = t.playerIds.filter(id => id !== playerId);
+      const result = gameManager.movePlayerToTeam(room, playerId, targetTeamId);
+      if (!result.success) {
+        return callback?.({ success: false, error: { code: 'TEAM_MOVE_FAILED', message: result.error || 'Nao foi possivel mover jogador.' } });
       }
-      target.teamId = targetTeamId;
-      newTeam.playerIds.push(playerId);
 
       room.lastActivityAt = Date.now();
       io.to(`room:${roomCode}`).emit('room:updated', roomManager.getRoomState(room));
@@ -450,7 +779,17 @@ io.on('connection', (socket) => {
       roomManager.markConnected(room, playerId, socket.id);
       socket.join(`room:${code}`);
       const roomState = roomManager.getRoomState(room);
-      const gameState = room.status !== 'lobby' ? gameManager.getFullGameState(room) : null;
+      const gameState = room.status !== 'lobby'
+        ? room.settings.gameType === 'quem-chega-mais-perto'
+          ? quemChegaMaisPertoGameManager.getGameState(room)
+          : room.settings.gameType === 'qual-e-a-palavra'
+            ? qualEAPalavraGameManager.getGameState(room)
+            : room.settings.gameType === 'bate-o-tempo'
+              ? bateOTempoGameManager.getGameState(room)
+              : room.settings.gameType === 'tres-letras'
+                ? tresLetrasGameManager.getGameState(room)
+                : gameManager.getFullGameState(room)
+        : null;
       callback?.({ success: true, room: roomState, playerId: player.id, playerToken: player.token, gameState });
       io.to(`room:${code}`).emit('room:updated', roomState);
       console.log(`[reconnect] ${code} - ${player.name}`);
@@ -477,6 +816,125 @@ io.on('connection', (socket) => {
         if (notReady.length > 0) {
           return callback?.({ success: false, error: { code: 'PLAYERS_NOT_READY', message: `Aguardando ${notReady.length} jogador(es).` } });
         }
+      }
+
+      const gameType = room.settings.gameType || 'bateprimeiro';
+      if (gameType === 'bate-o-tempo') {
+        const result = bateOTempoGameManager.prepareRoom(room);
+        if (!result.success) {
+          return callback?.({ success: false, error: { code: result.error, message: `Tempos-alvo insuficientes. Disponivel: ${result.available}.` } });
+        }
+
+        gameManager.resetScores(room);
+        room.roundHistory = [];
+
+        io.to(`room:${room.code}`).emit('game:countdown', { count: 3 });
+        room.status = 'countdown';
+        room.lastActivityAt = Date.now();
+        io.to(`room:${room.code}`).emit('room:updated', roomManager.getRoomState(room));
+        io.emit('rooms:updated', roomManager.getPublicRoomList());
+        callback?.({ success: true });
+
+        setTimeout(() => {
+          bateOTempoGameManager.start(room, {
+            emitRoom: (event, payload) => io.to(`room:${room.code}`).emit(event, payload),
+            emitPlayer: (targetPlayer, event, payload) => {
+              if (targetPlayer.socketId) io.to(targetPlayer.socketId).emit(event, payload);
+            },
+            emitRoomsUpdated: () => io.emit('rooms:updated', roomManager.getPublicRoomList()),
+          });
+        }, 3000);
+        return;
+      }
+
+      if (gameType === 'quem-chega-mais-perto') {
+        const result = quemChegaMaisPertoGameManager.prepareRoom(room);
+        if (!result.success) {
+          return callback?.({ success: false, error: { code: result.error, message: `Perguntas numericas insuficientes. Disponivel: ${result.available}.` } });
+        }
+
+        gameManager.resetScores(room);
+        room.roundHistory = [];
+
+        io.to(`room:${room.code}`).emit('game:countdown', { count: 3 });
+        room.status = 'countdown';
+        room.lastActivityAt = Date.now();
+        io.to(`room:${room.code}`).emit('room:updated', roomManager.getRoomState(room));
+        io.emit('rooms:updated', roomManager.getPublicRoomList());
+        callback?.({ success: true });
+
+        setTimeout(() => {
+          quemChegaMaisPertoGameManager.start(room, {
+            emitRoom: (event, payload) => io.to(`room:${room.code}`).emit(event, payload),
+            emitRoomsUpdated: () => io.emit('rooms:updated', roomManager.getPublicRoomList()),
+          });
+        }, 3000);
+        return;
+      }
+
+      if (gameType === 'qual-e-a-palavra') {
+        const result = qualEAPalavraGameManager.prepareRoom(room);
+        if (!result.success) {
+          return callback?.({ success: false, error: { code: result.error, message: `Palavras insuficientes. Disponivel: ${result.available}.` } });
+        }
+
+        gameManager.resetScores(room);
+        room.roundHistory = [];
+
+        io.to(`room:${room.code}`).emit('game:countdown', { count: 3 });
+        room.status = 'countdown';
+        room.lastActivityAt = Date.now();
+        io.to(`room:${room.code}`).emit('room:updated', roomManager.getRoomState(room));
+        io.emit('rooms:updated', roomManager.getPublicRoomList());
+        callback?.({ success: true });
+
+        setTimeout(() => {
+          qualEAPalavraGameManager.start(room, {
+            emitRoom: (event, payload) => io.to(`room:${room.code}`).emit(event, payload),
+            emitPlayer: (targetPlayer, event, payload) => {
+              if (targetPlayer.socketId) io.to(targetPlayer.socketId).emit(event, payload);
+            },
+            emitRoomsUpdated: () => io.emit('rooms:updated', roomManager.getPublicRoomList()),
+          });
+        }, 3000);
+        return;
+      }
+
+      if (gameType === 'tres-letras') {
+        const result = tresLetrasGameManager.prepareRoom(room);
+        if (!result.success) {
+          return callback?.({ success: false, error: { code: result.error, message: `Combinacoes insuficientes. Disponivel: ${result.available}.` } });
+        }
+
+        gameManager.resetScores(room);
+        room.roundHistory = [];
+
+        io.to(`room:${room.code}`).emit('game:countdown', { count: 3 });
+        room.status = 'countdown';
+        room.lastActivityAt = Date.now();
+        io.to(`room:${room.code}`).emit('room:updated', roomManager.getRoomState(room));
+        io.emit('rooms:updated', roomManager.getPublicRoomList());
+        callback?.({ success: true });
+
+        setTimeout(() => {
+          tresLetrasGameManager.start(room, {
+            emitRoom: (event, payload) => io.to(`room:${room.code}`).emit(event, payload),
+            emitRoomsUpdated: () => io.emit('rooms:updated', roomManager.getPublicRoomList()),
+          });
+        }, 3000);
+        return;
+      }
+
+      if (gameType !== 'bateprimeiro') {
+        const game = GAME_REGISTRY[gameType];
+        const payload = {
+          gameType,
+          title: game.title,
+          message: `${game.title} ainda esta em desenvolvimento.`,
+        };
+        io.to(`room:${room.code}`).emit('game:coming-soon', payload);
+        callback?.({ success: true, comingSoon: true });
+        return;
       }
 
       let result;
@@ -521,7 +979,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('buzzer:press', (data, callback) => {
-    if (!checkRateLimit(socket.id, 5, 2000)) {
+    if (!checkSocketAndIpRateLimit(socket, 'game-actions', 5, 2000, 120, 10000)) {
       return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisições.' } });
     }
     try {
@@ -545,8 +1003,103 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('guess:submit', (data, callback) => {
+    if (!checkSocketAndIpRateLimit(socket, 'game-actions', 10, 5000, 120, 10000)) {
+      return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisicoes.' } });
+    }
+    try {
+      const { roomCode } = data || {};
+      const room = roomManager.getRoom(roomCode?.toUpperCase());
+      if (!room) return callback?.({ success: false, error: { code: 'ROOM_NOT_FOUND', message: 'Sala nao encontrada.' } });
+      const player = findPlayerBySocket(room, socket.id);
+      if (!player) return callback?.({ success: false, error: { code: 'NOT_IN_ROOM', message: 'Voce nao esta nesta sala.' } });
+
+      const result = quemChegaMaisPertoGameManager.submitGuess(room, player, data || {});
+      callback?.(result);
+    } catch (err) {
+      console.error('[guess:submit] error:', err);
+      callback?.({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Erro interno.' } });
+    }
+  });
+
+  socket.on('word:attempt', (data, callback) => {
+    if (!checkSocketAndIpRateLimit(socket, 'game-actions', 20, 5000, 120, 10000)) {
+      return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisicoes.' } });
+    }
+    try {
+      const { roomCode } = data || {};
+      const room = roomManager.getRoom(roomCode?.toUpperCase());
+      if (!room) return callback?.({ success: false, error: { code: 'ROOM_NOT_FOUND', message: 'Sala nao encontrada.' } });
+      const player = findPlayerBySocket(room, socket.id);
+      if (!player) return callback?.({ success: false, error: { code: 'NOT_IN_ROOM', message: 'Voce nao esta nesta sala.' } });
+
+      const result = qualEAPalavraGameManager.submitAttempt(room, player, data || {});
+      callback?.(result);
+    } catch (err) {
+      console.error('[word:attempt] error:', err);
+      callback?.({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Erro interno.' } });
+    }
+  });
+
+  socket.on('timer:start', (data, callback) => {
+    if (!checkSocketAndIpRateLimit(socket, 'game-actions', 20, 5000, 120, 10000)) {
+      return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisicoes.' } });
+    }
+    try {
+      const { roomCode } = data || {};
+      const room = roomManager.getRoom(roomCode?.toUpperCase());
+      if (!room) return callback?.({ success: false, error: { code: 'ROOM_NOT_FOUND', message: 'Sala nao encontrada.' } });
+      const player = findPlayerBySocket(room, socket.id);
+      if (!player) return callback?.({ success: false, error: { code: 'NOT_IN_ROOM', message: 'Voce nao esta nesta sala.' } });
+
+      const result = bateOTempoGameManager.startTimer(room, player);
+      callback?.(result);
+    } catch (err) {
+      console.error('[timer:start] error:', err);
+      callback?.({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Erro interno.' } });
+    }
+  });
+
+  socket.on('timer:stop', (data, callback) => {
+    if (!checkSocketAndIpRateLimit(socket, 'game-actions', 20, 5000, 120, 10000)) {
+      return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisicoes.' } });
+    }
+    try {
+      const { roomCode } = data || {};
+      const room = roomManager.getRoom(roomCode?.toUpperCase());
+      if (!room) return callback?.({ success: false, error: { code: 'ROOM_NOT_FOUND', message: 'Sala nao encontrada.' } });
+      const player = findPlayerBySocket(room, socket.id);
+      if (!player) return callback?.({ success: false, error: { code: 'NOT_IN_ROOM', message: 'Voce nao esta nesta sala.' } });
+
+      const result = bateOTempoGameManager.stopTimer(room, player);
+      callback?.(result);
+    } catch (err) {
+      console.error('[timer:stop] error:', err);
+      callback?.({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Erro interno.' } });
+    }
+  });
+
+  socket.on('vote:submit', (data, callback) => {
+    if (!checkSocketAndIpRateLimit(socket, 'game-actions', 40, 5000, 120, 10000)) {
+      return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisicoes.' } });
+    }
+    try {
+      const { roomCode } = data || {};
+      const room = roomManager.getRoom(roomCode?.toUpperCase());
+      if (!room) return callback?.({ success: false, error: { code: 'ROOM_NOT_FOUND', message: 'Sala nao encontrada.' } });
+      const player = findPlayerBySocket(room, socket.id);
+      if (!player) return callback?.({ success: false, error: { code: 'NOT_IN_ROOM', message: 'Voce nao esta nesta sala.' } });
+
+      const result = tresLetrasGameManager.submitVote(room, player, data || {});
+      callback?.(result);
+    } catch (err) {
+      console.error('[vote:submit] error:', err);
+      callback?.({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Erro interno.' } });
+    }
+  });
+
   socket.on('answer:submit', (data, callback) => {
-    if (!checkRateLimit(socket.id, 5, 5000)) {
+    if (!checkSocketAndIpRateLimit(socket, 'game-actions', 5, 5000, 120, 10000)) {
       return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisições.' } });
     }
     try {
@@ -555,6 +1108,10 @@ io.on('connection', (socket) => {
       if (!room) return callback?.({ success: false, error: { code: 'ROOM_NOT_FOUND', message: 'Sala não encontrada.' } });
       const player = findPlayerBySocket(room, socket.id);
       if (!player) return callback?.({ success: false, error: { code: 'NOT_IN_ROOM', message: 'Você não está nesta sala.' } });
+      if (room.settings.gameType === 'tres-letras') {
+        const result = tresLetrasGameManager.submitAnswer(room, player, data || {});
+        return callback?.(result);
+      }
       if (room.currentBuzzerWinnerId !== player.id) {
         return callback?.({ success: false, error: { code: 'NOT_YOUR_TURN', message: 'Não é sua vez.' } });
       }
@@ -601,7 +1158,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('answer:written', (data, callback) => {
-    if (!checkRateLimit(socket.id, 5, 5000)) {
+    if (!checkSocketAndIpRateLimit(socket, 'game-actions', 5, 5000, 120, 10000)) {
       return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisições.' } });
     }
     try {
@@ -732,11 +1289,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('quiz:create', (data, callback) => {
-    if (!checkRateLimit(socket.id, 3, 10000)) {
+    if (!checkSocketAndIpRateLimit(socket, 'content:create', 3, 10000, 20, 60000)) {
       return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisições.' } });
     }
     try {
-      const { quizTitle, quizDescription, questions } = data;
+      const { quizDescription, questions } = data;
+      const quizTitle = data.quizTitle || data.quizName;
       if (!quizTitle || typeof quizTitle !== 'string' || quizTitle.trim().length < 3) {
         return callback?.({ success: false, error: { code: 'INVALID_QUIZ_TITLE', message: 'Título deve ter pelo menos 3 caracteres.' } });
       }
@@ -775,6 +1333,109 @@ io.on('connection', (socket) => {
       console.log(`[quiz:create] ${quizId} - "${quizTitle}" (${formattedQuestions.length} questions)`);
     } catch (err) {
       console.error('[quiz:create] error:', err);
+      callback?.({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Erro interno.' } });
+    }
+  });
+
+  socket.on('content:create', (data, callback) => {
+    if (!checkSocketAndIpRateLimit(socket, 'content:create', 3, 10000, 20, 60000)) {
+      return callback?.({ success: false, error: { code: 'RATE_LIMIT', message: 'Muitas requisicoes.' } });
+    }
+    try {
+      const { gameType, title, items } = data || {};
+      if (gameType !== 'qual-e-a-palavra' && gameType !== 'quem-chega-mais-perto' && gameType !== 'tres-letras') {
+        return callback?.({ success: false, error: { code: 'INVALID_GAME_TYPE', message: 'Jogo nao aceita conteudo personalizado.' } });
+      }
+      if (!title || typeof title !== 'string' || title.trim().length < 3) {
+        return callback?.({ success: false, error: { code: 'INVALID_TITLE', message: 'Nome deve ter pelo menos 3 caracteres.' } });
+      }
+      if (!Array.isArray(items) || items.length < 5) {
+        return callback?.({ success: false, error: { code: 'NOT_ENOUGH_ITEMS', message: 'Adicione pelo menos 5 itens.' } });
+      }
+      if (items.length > 100) {
+        return callback?.({ success: false, error: { code: 'TOO_MANY_ITEMS', message: 'Maximo 100 itens.' } });
+      }
+
+      const contentId = crypto.randomUUID();
+      const formattedQuestions: Question[] = items.map((item: any, idx: number) => {
+        if (gameType === 'tres-letras') {
+          const letters = normalizeTresLetrasCombination(String(item.combination || item.text || ''));
+          return {
+            id: `custom-content-${contentId}-${idx}`,
+            text: letters.join(''),
+            answerType: 'written',
+            category: 'Personalizado',
+            difficulty: 'mixed',
+            correctAnswer: letters.join(''),
+            acceptedAnswers: [letters.join('')],
+            strictness: 'exact',
+            timeLimitSeconds: 30,
+          };
+        }
+
+        if (gameType === 'qual-e-a-palavra') {
+          const word = String(item.word || item.text || '').trim().slice(0, 80);
+          return {
+            id: `custom-content-${contentId}-${idx}`,
+            text: word,
+            answerType: 'written',
+            category: String(item.category || 'Personalizado').trim().slice(0, 40),
+            difficulty: 'medium',
+            correctAnswer: word,
+            acceptedAnswers: [word],
+            strictness: 'normalized',
+            timeLimitSeconds: 30,
+          };
+        }
+
+        const answerNumber = Number(item.answer);
+        return {
+          id: `custom-content-${contentId}-${idx}`,
+          text: String(item.question || item.text || '').trim().slice(0, 500),
+          answerType: 'written',
+          category: String(item.category || 'Personalizado').trim().slice(0, 40),
+          difficulty: 'medium',
+          correctAnswer: Number.isFinite(answerNumber) ? String(answerNumber) : '',
+          acceptedAnswers: Number.isFinite(answerNumber) ? [String(answerNumber)] : [],
+          strictness: 'exact',
+          timeLimitSeconds: 30,
+        };
+      });
+
+      if (gameType === 'tres-letras') {
+        const normalizedCombinations = formattedQuestions.map((question) => normalizeTresLetrasCombination(question.correctAnswer || '').join(''));
+        if (formattedQuestions.some((question) => !isValidTresLetrasCombination(normalizeTresLetrasCombination(question.correctAnswer || '')))) {
+          return callback?.({ success: false, error: { code: 'INVALID_ITEMS', message: 'Cada combinacao precisa ter exatamente 3 letras validas, sem repeticao.' } });
+        }
+        if (new Set(normalizedCombinations).size !== normalizedCombinations.length) {
+          return callback?.({ success: false, error: { code: 'DUPLICATED_ITEMS', message: 'Remova combinacoes repetidas.' } });
+        }
+      }
+
+      if (formattedQuestions.some((question) => !question.text || !question.correctAnswer)) {
+        return callback?.({ success: false, error: { code: 'INVALID_ITEMS', message: 'Preencha todos os itens corretamente.' } });
+      }
+
+      const contentType = gameType === 'qual-e-a-palavra'
+        ? 'word-list'
+        : gameType === 'tres-letras'
+          ? 'letter-combinations'
+          : 'numeric-questions';
+      const contentTitle = title.trim().slice(0, 60);
+      roomManager.saveCustomQuiz({
+        id: contentId,
+        title: contentTitle,
+        description: '',
+        gameType,
+        contentType,
+        questions: formattedQuestions,
+        createdAt: Date.now(),
+      });
+
+      callback?.({ success: true, contentId, title: contentTitle, itemCount: formattedQuestions.length });
+      console.log(`[content:create] ${contentId} - "${contentTitle}" (${gameType}, ${formattedQuestions.length} items)`);
+    } catch (err) {
+      console.error('[content:create] error:', err);
       callback?.({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Erro interno.' } });
     }
   });

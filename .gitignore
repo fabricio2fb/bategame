@@ -28,6 +28,7 @@ node_modules/
 Thumbs.db
 *.pem
 *.local
+*.md
 
 # runtime/generated local data
 /data/reports/

@@ -139,9 +139,9 @@ export class GameManager {
     return room.selectedQuestions[room.currentQuestionIndex];
   }
 
-  getScores(room: GameRoom): Array<{ playerId: string; name: string; score: number }> {
+  getScores(room: GameRoom): Array<{ playerId: string; name: string; avatarUrl?: string; score: number }> {
     return Array.from(room.players.values())
-      .map(p => ({ playerId: p.id, name: p.name, score: p.score }))
+      .map(p => ({ playerId: p.id, name: p.name, avatarUrl: p.avatarUrl, score: p.score }))
       .sort((a, b) => b.score - a.score);
   }
 
@@ -161,7 +161,7 @@ export class GameManager {
     room.roundHistory.push({ ...event, timestamp: Date.now() });
   }
 
-  assignTeams(room: GameRoom, teamCount: number): void {
+  assignTeams(room: GameRoom, teamCount: number, assignmentMode: 'random' | 'manual' = 'random'): void {
     const players = Array.from(room.players.values());
     room.teams = [];
     const teamNames = ['Azul', 'Vermelha', 'Verde', 'Amarela', 'Roxa', 'Rosa', 'Ciano', 'Laranja'];
@@ -175,6 +175,16 @@ export class GameManager {
         playerIds: [],
       });
     }
+
+    for (const player of players) {
+      player.teamId = undefined;
+    }
+
+    if (assignmentMode === 'manual') {
+      room.teamRotationIndex = 0;
+      return;
+    }
+
     for (let i = 0; i < players.length; i++) {
       const teamIdx = i % teamCount;
       players[i].teamId = room.teams[teamIdx].id;
@@ -182,6 +192,36 @@ export class GameManager {
     }
     room.teamRotationIndex = 0;
     this.rotateTeamActivePlayers(room);
+  }
+
+  movePlayerToTeam(room: GameRoom, playerId: string, targetTeamId: string): { success: boolean; error?: string } {
+    const player = room.players.get(playerId);
+    if (!player) return { success: false, error: 'Jogador nao encontrado.' };
+
+    const targetTeam = room.teams.find(t => t.id === targetTeamId);
+    if (!targetTeam) return { success: false, error: 'Time nao encontrado.' };
+
+    const teamCount = room.settings.teamCount || room.teams.length || 1;
+    const maxPlayersPerTeam = Math.ceil(room.settings.maxPlayers / teamCount);
+    const isAlreadyInTeam = player.teamId === targetTeamId;
+    if (!isAlreadyInTeam && targetTeam.playerIds.length >= maxPlayersPerTeam) {
+      return { success: false, error: 'Este time esta cheio.' };
+    }
+
+    for (const team of room.teams) {
+      team.playerIds = team.playerIds.filter(id => id !== playerId);
+      if (team.activePlayerId === playerId) team.activePlayerId = undefined;
+    }
+
+    player.teamId = targetTeamId;
+    if (!targetTeam.playerIds.includes(playerId)) {
+      targetTeam.playerIds.push(playerId);
+    }
+    if (!targetTeam.activePlayerId) {
+      targetTeam.activePlayerId = playerId;
+    }
+
+    return { success: true };
   }
 
   rotateTeamActivePlayers(room: GameRoom): void {

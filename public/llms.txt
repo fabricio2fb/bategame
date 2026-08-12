@@ -1,0 +1,20 @@
+# Tempale
+
+Tempale e um hub de jogos online multiplayer para jogar no navegador com amigos, usando salas compartilhadas por link ou codigo.
+
+## Jogos
+
+- [BatePrimeiro](/bateprimeiro): jogo de perguntas e respostas com buzzer dentro do hub Tempale; quem apertar primeiro ganha a vez de responder.
+- [Qual e a Palavra](/qual-e-a-palavra): jogo de anagramas online com letras embaralhadas para descobrir palavras em grupo.
+- [Bate o Tempo](/bate-o-tempo): jogo de cronometro e precisao em que vence quem para mais perto do tempo alvo.
+- [Quem Chega Mais Perto](/quem-chega-mais-perto): jogo de palpites numericos em que vence quem estima mais perto da resposta correta.
+- [3 Letras](/tres-letras): jogo de criatividade com palavras em que os jogadores criam respostas usando tres letras sorteadas.
+
+## Links principais
+
+- Home: /
+- Como jogar: /como-jogar
+- Termos de uso: /termos
+- Privacidade: /privacidade
+
+Rotas de sala, partida, API e sessoes temporarias nao devem ser indexadas nem usadas como paginas publicas permanentes.

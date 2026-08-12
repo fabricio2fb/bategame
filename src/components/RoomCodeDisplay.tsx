@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useCallback, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Copy, Check, Share2, Link } from 'lucide-react';
 import { getRoomPath } from '@/lib/room-code';
 
 interface RoomCodeDisplayProps {
   code: string;
+  accentColor?: string;
 }
 
-export const RoomCodeDisplay: React.FC<RoomCodeDisplayProps> = ({ code }) => {
+export const RoomCodeDisplay: React.FC<RoomCodeDisplayProps> = ({ code, accentColor = '#3B82F6' }) => {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -42,26 +42,41 @@ export const RoomCodeDisplay: React.FC<RoomCodeDisplayProps> = ({ code }) => {
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="relative">
-        <div className="absolute inset-0 bg-[#3B82F6]/5 rounded-2xl blur-xl" />
-        <div className="relative bg-white/90 backdrop-blur-sm border-2 border-[#3B82F6]/20 rounded-2xl px-8 py-6 text-center shadow-lg">
-          <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-widest mb-2">Código da sala</p>
-          <div className="text-5xl sm:text-6xl font-mono font-bold tracking-[0.25em] text-[#3B82F6] select-all leading-none">
+        <div className="absolute inset-0 rounded-2xl blur-xl" style={{ backgroundColor: `${accentColor}14` }} />
+        <div
+          className="relative rounded-2xl border-2 bg-white/90 px-8 py-6 text-center shadow-lg backdrop-blur-sm"
+          style={{ borderColor: `${accentColor}33` }}
+        >
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#64748B]">Codigo da sala</p>
+          <div
+            className="select-all font-mono text-5xl font-bold leading-none tracking-[0.25em] sm:text-6xl"
+            style={{ color: accentColor }}
+          >
             {code}
           </div>
         </div>
       </div>
       <div className="flex gap-2">
-        <button onClick={handleCopyCode}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-white/80 hover:bg-white text-[#0F172A] text-xs font-semibold rounded-xl border border-[#CBD5E1]/60 hover:border-[#3B82F6]/30 transition-all cursor-pointer">
-          {copiedCode ? <><Check className="w-3.5 h-3.5 text-[#22C55E]" /><span>Copiado</span></> : <><Copy className="w-3.5 h-3.5" /><span>Copiar código</span></>}
+        <button
+          onClick={handleCopyCode}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#CBD5E1]/60 bg-white/80 px-4 py-2 text-xs font-semibold text-[#0F172A] transition-all hover:bg-white"
+          style={{ borderColor: copiedCode ? `${accentColor}55` : undefined }}
+        >
+          {copiedCode ? <><Check className="h-3.5 w-3.5 text-[#22C55E]" /><span>Copiado</span></> : <><Copy className="h-3.5 w-3.5" /><span>Copiar codigo</span></>}
         </button>
-        <button onClick={handleCopyLink}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-white/80 hover:bg-white text-[#0F172A] text-xs font-semibold rounded-xl border border-[#CBD5E1]/60 hover:border-[#3B82F6]/30 transition-all cursor-pointer">
-          {copiedLink ? <><Check className="w-3.5 h-3.5 text-[#22C55E]" /><span>Copiado</span></> : <><Link className="w-3.5 h-3.5" /><span>Copiar link</span></>}
+        <button
+          onClick={handleCopyLink}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#CBD5E1]/60 bg-white/80 px-4 py-2 text-xs font-semibold text-[#0F172A] transition-all hover:bg-white"
+          style={{ borderColor: copiedLink ? `${accentColor}55` : undefined }}
+        >
+          {copiedLink ? <><Check className="h-3.5 w-3.5 text-[#22C55E]" /><span>Copiado</span></> : <><Link className="h-3.5 w-3.5" /><span>Copiar link</span></>}
         </button>
-        <button onClick={handleShare}
-          className="inline-flex items-center justify-center w-9 h-9 bg-white/80 hover:bg-white text-[#0F172A] rounded-xl border border-[#CBD5E1]/60 hover:border-[#3B82F6]/30 transition-all cursor-pointer">
-          <Share2 className="w-3.5 h-3.5" />
+        <button
+          onClick={handleShare}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#CBD5E1]/60 bg-white/80 text-[#0F172A] transition-all hover:bg-white"
+          aria-label="Compartilhar"
+        >
+          <Share2 className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
