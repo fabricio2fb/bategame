@@ -60,7 +60,7 @@ export function getSocket(): Socket {
     attempt: connectionAttempt,
     url: socketUrl,
     pageOrigin: window.location.origin,
-    transports: ['polling', 'websocket'],
+    transports: ['websocket', 'polling'],
   });
 
   globalSocket = io(socketUrl, {
@@ -70,7 +70,7 @@ export function getSocket(): Socket {
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     timeout: 10000,
-    transports: ['polling', 'websocket'],
+    transports: ['websocket', 'polling'],
   });
 
   globalSocket.on('connect', () => {
