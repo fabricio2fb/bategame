@@ -3,6 +3,7 @@
 import { io, Socket } from 'socket.io-client';
 
 const LOCAL_SOCKET_URL = 'http://127.0.0.1:3002';
+const PRODUCTION_SOCKET_URL = 'https://bateprimeiro-socket.onrender.com';
 const SOCKET_CONFIG_ERROR = 'Servidor Socket.IO nao configurado. Configure NEXT_PUBLIC_SOCKET_URL com a URL publica do backend.';
 
 let globalSocket: Socket | null = null;
@@ -23,7 +24,7 @@ export function getSocketUrl(): string | null {
   const configuredUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
   if (configuredUrl?.trim()) return normalizeSocketUrl(configuredUrl);
   if (isLocalBrowser() || process.env.NODE_ENV !== 'production') return LOCAL_SOCKET_URL;
-  return null;
+  return PRODUCTION_SOCKET_URL;
 }
 
 export function getSocketDiagnosticsLabel(): string {
