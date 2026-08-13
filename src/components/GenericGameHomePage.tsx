@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Pencil, X } from 'lucide-react';
@@ -30,6 +30,7 @@ export function GenericGameHomePage({ gameType }: GenericGameHomePageProps) {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isRoomsModalOpen, setIsRoomsModalOpen] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   const normalizedHostName = hostName.trim().replace(/\s+/g, ' ');
   const isBusy = submittingAction !== null;
@@ -143,6 +144,8 @@ export function GenericGameHomePage({ gameType }: GenericGameHomePageProps) {
       setIsAvatarModalOpen(false);
     } catch {
       setError('Nao foi possivel carregar esta imagem.');
+    } finally {
+      event.currentTarget.value = '';
     }
   }
 
@@ -346,11 +349,21 @@ export function GenericGameHomePage({ gameType }: GenericGameHomePageProps) {
               ))}
             </div>
 
-            <label className="mt-5 block cursor-pointer rounded-2xl border-2 border-dashed border-[#CBD5E1] bg-white/70 px-5 py-8 text-center transition-colors hover:border-[#0891B2]">
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              className="mt-5 block w-full cursor-pointer rounded-2xl border-2 border-dashed border-[#CBD5E1] bg-white/70 px-5 py-8 text-center transition-colors hover:border-[#0891B2]"
+            >
               <span className="block text-sm font-black text-[#0F172A]">Selecionar imagem</span>
               <span className="mt-1 block text-xs font-semibold text-[#64748B]">PNG, JPG ou WEBP</span>
-              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarChange} className="sr-only" />
-            </label>
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleAvatarChange}
+              className="sr-only"
+            />
 
             {avatarPreview && (
               <button

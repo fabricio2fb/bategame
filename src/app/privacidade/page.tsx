@@ -12,6 +12,7 @@ const contactInfo = 'Canal oficial de contato a configurar.';
 const sections = [
   ['Dados usados nas partidas', 'Para criar ou entrar em uma partida online, usamos nome do jogador, nome da sala, codigo da sala, configuracoes, identificadores de jogador e estado da partida.'],
   ['Dados tecnicos e logs', 'O servidor pode registrar eventos tecnicos como conexao, criacao de sala, entrada, reconexao, saida e erros internos para diagnosticar falhas e manter o jogo funcionando.'],
+  ['Analytics e desempenho', 'Usamos Google Analytics para entender visitas, paginas acessadas e uso geral do site. A ferramenta pode usar cookies e identificadores tecnicos conforme as politicas do Google, sem que o Tempale solicite dados pessoais identificaveis para essa medicao.'],
   ['Relatorios de problemas', 'Quando um usuario reporta uma pergunta, palavra ou rodada, podemos registrar o identificador do conteudo, motivo, data, modo, categoria e dificuldade para revisao.'],
   ['Armazenamento local', 'O navegador pode guardar dados de sessao, como codigo da sala, identificador de jogador e token de reconexao. Tambem pode salvar rascunhos de conteudo personalizado.'],
   ['Finalidade do uso', 'Os dados permitem partidas online, reconexao, placar, configuracao de salas, revisao de problemas e melhoria da estabilidade dos jogos.'],

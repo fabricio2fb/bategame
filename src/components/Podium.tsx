@@ -25,15 +25,15 @@ export const Podium: React.FC<PodiumProps> = ({ winners, currentPlayerId, isTie,
   const topScore = sorted[0]?.score ?? 0;
 
   const podiumPositions = [
-    { height: 'h-32', order: 2, delay: 0.2, label: '2º' },
-    { height: 'h-40', order: 1, delay: 0, label: '1º' },
-    { height: 'h-24', order: 3, delay: 0.4, label: '3º' },
+    { height: 'h-32', playerIndex: 1, delay: 0.2, label: '2º' },
+    { height: 'h-40', playerIndex: 0, delay: 0, label: '1º' },
+    { height: 'h-24', playerIndex: 2, delay: 0.4, label: '3º' },
   ];
 
   return (
     <div className="flex items-end justify-center gap-4 sm:gap-6 pt-4">
       {podiumPositions.map((pos, idx) => {
-        const player = top3[idx];
+        const player = top3[pos.playerIndex];
         if (!player) {
           return <div key={pos.label} className={`w-24 sm:w-28 ${pos.height} flex items-end justify-center pb-3`}>
             <span className="text-xs text-[#94A3B8]">-</span>
@@ -41,7 +41,7 @@ export const Podium: React.FC<PodiumProps> = ({ winners, currentPlayerId, isTie,
         }
 
         const isCurrent = player.playerId === currentPlayerId;
-        const isFirst = idx === 1;
+        const isFirst = pos.playerIndex === 0;
 
         return (
           <motion.div

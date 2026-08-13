@@ -132,9 +132,10 @@ test('35. Site inicia conexao Socket.IO apenas nas rotas em tempo real e produca
   assert.match(bootstrap, /getSocket\(\)/);
   assert.match(socket, /NEXT_PUBLIC_SOCKET_URL/);
   assert.match(socket, /process\.env\.NODE_ENV !== 'production'/);
-  assert.match(socket, /return null/);
+  assert.match(socket, /PRODUCTION_SOCKET_URL = 'https:\/\/bateprimeiro-socket\.onrender\.com'/);
+  assert.match(socket, /return PRODUCTION_SOCKET_URL/);
   assert.match(socket, /Servidor Socket\.IO nao configurado/);
-  assert.match(socket, /transports: \['polling', 'websocket'\]/);
+  assert.match(socket, /transports: \['websocket', 'polling'\]/);
   assert.doesNotMatch(nextConfig, /127\.0\.0\.1:3002/);
 });
 
@@ -355,4 +356,27 @@ test('27. Modo sofa configura em criar-partida e navega para partida-sofa', () =
   assert.match(couchSetup, /Pressione qualquer tecla/);
   assert.match(couchSetup, /Esta tecla já está em uso/);
   assert.doesNotMatch(couchRuntime, /<ActivityFeed/);
+});
+
+test('33. Resultado final monta o podio com maior pontuacao no primeiro lugar visual', () => {
+  const podium = read('src/components/Podium.tsx');
+  assert.match(podium, /const sorted = \[\.\.\.winners\]\.sort\(\(a, b\) => b\.score - a\.score\)/);
+  assert.match(podium, /height: 'h-32'[\s\S]*playerIndex: 1[\s\S]*label: '2/);
+  assert.match(podium, /height: 'h-40'[\s\S]*playerIndex: 0[\s\S]*label: '1/);
+  assert.match(podium, /height: 'h-24'[\s\S]*playerIndex: 2[\s\S]*label: '3/);
+  assert.match(podium, /const player = top3\[pos\.playerIndex\]/);
+  assert.match(podium, /const isFirst = pos\.playerIndex === 0/);
+  assert.doesNotMatch(podium, /const player = top3\[idx\]/);
+});
+
+test('34. Botao de upload de avatar aciona input de arquivo nas landings', () => {
+  const bateprimeiro = read('src/app/bateprimeiro/page.tsx');
+  const generic = read('src/components/GenericGameHomePage.tsx');
+  for (const source of [bateprimeiro, generic]) {
+    assert.match(source, /useRef/);
+    assert.match(source, /const avatarInputRef = useRef<HTMLInputElement \| null>\(null\)/);
+    assert.match(source, /onClick=\{\(\) => avatarInputRef\.current\?\.click\(\)\}/);
+    assert.match(source, /ref=\{avatarInputRef\}[\s\S]*type="file"[\s\S]*accept="image\/png,image\/jpeg,image\/webp"/);
+    assert.match(source, /event\.currentTarget\.value = ''/);
+  }
 });

@@ -102,9 +102,13 @@ export const PUBLIC_ROUTES = [
   '/termos',
   '/privacidade',
   '/criar-partida',
+  '/qual-e-a-palavra/como-jogar',
   '/qual-e-a-palavra/criar',
+  '/bate-o-tempo/como-jogar',
   '/bate-o-tempo/criar',
+  '/quem-chega-mais-perto/como-jogar',
   '/quem-chega-mais-perto/criar',
+  '/tres-letras/como-jogar',
   '/tres-letras/criar',
 ];
 

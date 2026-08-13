@@ -15,6 +15,7 @@ export default function robots(): MetadataRoute.Robots {
         '/bate-o-tempo/entrar',
         '/quem-chega-mais-perto/entrar',
         '/tres-letras/entrar',
+        '/dado-de-forca/entrar',
         '/criar-quiz',
         '/partida-sofa',
         '/partida1',
