@@ -101,6 +101,7 @@ export const PUBLIC_ROUTES = [
   '/como-jogar',
   '/termos',
   '/privacidade',
+  '/blog',
   '/criar-partida',
   '/qual-e-a-palavra/como-jogar',
   '/qual-e-a-palavra/criar',
@@ -217,7 +218,7 @@ export function buildSitemap(): MetadataRoute.Sitemap {
   return PUBLIC_ROUTES.map((route) => ({
     url: absoluteUrl(route),
     lastModified: now,
-    changeFrequency: route === '/' ? 'weekly' : 'monthly',
+    changeFrequency: route === '/' ? 'weekly' as const : 'monthly' as const,
     priority: route === '/' ? 1 : route.includes('/criar') || route === '/criar-partida' ? 0.55 : 0.8,
   }));
 }
