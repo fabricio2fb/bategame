@@ -109,14 +109,18 @@ export default function Home() {
             </div>
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <Link
-                href="#"
+                href="https://www.instagram.com/tempale.app"
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="Instagram"
                 className="grid h-10 w-10 place-items-center rounded-full border border-[#CBD5E1] bg-white/55 text-[#0F172A] shadow-[0_10px_24px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-0.5 hover:border-[#3B82F6]/50 hover:bg-white sm:h-11 sm:w-11"
               >
                 <InstagramIcon />
               </Link>
               <Link
-                href="#"
+                href="https://www.tiktok.com/@tempale.app"
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="TikTok"
                 className="grid h-10 w-10 place-items-center rounded-full border border-[#CBD5E1] bg-white/55 text-[#0F172A] shadow-[0_10px_24px_rgba(15,23,42,0.08)] transition-all hover:-translate-y-0.5 hover:border-[#3B82F6]/50 hover:bg-white sm:h-11 sm:w-11"
               >
