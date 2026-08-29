@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getSocket } from '@/lib/socket';
 import { clearSessionData, getSessionData, RoomSettings, RoomState, RoomStatus, Team } from '@/lib/types';
 import { getRoomPath } from '@/lib/room-code';
+import { useDeadlineSeconds } from './useDeadlineSeconds';
 
 export type BateOTempoTimerStatus = 'not-started' | 'running' | 'stopped' | 'timeout';
 
@@ -94,7 +95,7 @@ export function useBateOTempoRuntime(roomCode: string) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [isActing, setIsActing] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
-  const [timer, setTimer] = useState(0);
+  const timer = useDeadlineSeconds(roundDeadlineAt, status === 'target-visible' || status === 'running');
 
   const applyRoom = useCallback((room: RoomState, currentPlayerId?: string) => {
     setSettings(room.settings);
@@ -122,18 +123,6 @@ export function useBateOTempoRuntime(roomCode: string) {
     setTeamScores(gameState.teamScores || []);
     setTeams(gameState.teams || []);
   }, []);
-
-  useEffect(() => {
-    if (!roundDeadlineAt || (status !== 'target-visible' && status !== 'running')) {
-      setTimer(0);
-      return;
-    }
-
-    const update = () => setTimer(Math.max(0, Math.ceil((roundDeadlineAt - Date.now()) / 1000)));
-    update();
-    const interval = window.setInterval(update, 250);
-    return () => window.clearInterval(interval);
-  }, [roundDeadlineAt, status]);
 
   useEffect(() => {
     if (countdownValue === null || countdownValue <= 0) return;
@@ -194,7 +183,6 @@ export function useBateOTempoRuntime(roomCode: string) {
     const onRoundReveal = (data: BateOTempoRoundReveal) => {
       setStatus('round-reveal');
       setRoundDeadlineAt(null);
-      setTimer(0);
       setLastReveal(data);
       setScores(data.scores || []);
       setTeamScores(data.teamScores || []);
@@ -216,7 +204,6 @@ export function useBateOTempoRuntime(roomCode: string) {
       setScores(data.scores || []);
       setTeamScores(data.teamScores || []);
       setRoundDeadlineAt(null);
-      setTimer(0);
     };
     const onRematch = (data: { roomCode: string }) => router.push(getRoomPath(data.roomCode));
 

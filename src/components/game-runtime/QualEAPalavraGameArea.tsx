@@ -78,6 +78,11 @@ export function QualEAPalavraGameArea({
     setSelectedLetters((current) => current.slice(0, -1));
   };
 
+  const removeLetterAt = (position: number) => {
+    if (phase !== 'answering' || isSubmitting) return;
+    setSelectedLetters((current) => current.filter((_, index) => index !== position));
+  };
+
   const clear = () => {
     setSelectedLetters([]);
   };
@@ -158,7 +163,11 @@ export function QualEAPalavraGameArea({
                 {Array.from({ length: word.length }).map((_, index) => {
                   const selected = selectedLetters[index]?.letter;
                   return (
-                    <span
+                    <button
+                      type="button"
+                      aria-label={selected ? `Remover letra ${selected}` : 'Espaco vazio'}
+                      onClick={() => selected && removeLetterAt(index)}
+                      disabled={!selected || isSubmitting}
                       key={index}
                       className={`grid h-14 w-11 place-items-center rounded-xl border-b-4 text-2xl font-black transition-all sm:h-16 sm:w-14 sm:text-3xl ${
                         wrongPulse
@@ -169,7 +178,7 @@ export function QualEAPalavraGameArea({
                       }`}
                     >
                       {selected || ''}
-                    </span>
+                    </button>
                   );
                 })}
               </div>

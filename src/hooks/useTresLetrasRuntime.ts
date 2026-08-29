@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getSocket } from '@/lib/socket';
 import { clearSessionData, getSessionData, RoomSettings, RoomState, RoomStatus, Team } from '@/lib/types';
 import { getRoomPath } from '@/lib/room-code';
+import { useDeadlineSeconds } from './useDeadlineSeconds';
 
 export interface TresLetrasRound {
   id: string;
@@ -97,7 +98,12 @@ export function useTresLetrasRuntime(roomCode: string) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
-  const [timer, setTimer] = useState(0);
+  const activeDeadline = status === 'letters-visible' || status === 'writing'
+    ? writingDeadlineAt
+    : status === 'voting'
+      ? votingDeadlineAt
+      : null;
+  const timer = useDeadlineSeconds(activeDeadline, activeDeadline !== null);
 
   const applyRoom = useCallback((room: RoomState, currentPlayerId?: string) => {
     setSettings(room.settings);
@@ -125,25 +131,6 @@ export function useTresLetrasRuntime(roomCode: string) {
     setTeamScores(gameState.teamScores || []);
     setTeams(gameState.teams || []);
   }, []);
-
-  useEffect(() => {
-    const activeDeadline =
-      status === 'letters-visible' || status === 'writing'
-        ? writingDeadlineAt
-        : status === 'voting'
-          ? votingDeadlineAt
-          : null;
-
-    if (!activeDeadline) {
-      setTimer(0);
-      return;
-    }
-
-    const update = () => setTimer(Math.max(0, Math.ceil((activeDeadline - Date.now()) / 1000)));
-    update();
-    const interval = window.setInterval(update, 250);
-    return () => window.clearInterval(interval);
-  }, [status, votingDeadlineAt, writingDeadlineAt]);
 
   useEffect(() => {
     if (countdownValue === null || countdownValue <= 0) return;
@@ -216,7 +203,6 @@ export function useTresLetrasRuntime(roomCode: string) {
       setStatus('round-reveal');
       setVotingDeadlineAt(null);
       setWritingDeadlineAt(null);
-      setTimer(0);
       setLastReveal(data);
       setVoteCounts([]);
       setScores(data.scores || []);
@@ -239,7 +225,6 @@ export function useTresLetrasRuntime(roomCode: string) {
       setTeamScores(data.teamScores || []);
       setVotingDeadlineAt(null);
       setWritingDeadlineAt(null);
-      setTimer(0);
     };
     const onRematch = (data: { roomCode: string }) => router.push(getRoomPath(data.roomCode));
 

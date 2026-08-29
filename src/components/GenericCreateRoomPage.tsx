@@ -171,7 +171,7 @@ export function buildGenericRoomSettings(gameType: GenericGameType, formState: G
     questionCount: 10,
     roundCount: formState.roundCount,
     category: hasCategoryRoundConfig && formState.contentSource === 'official' ? formState.category : undefined,
-    difficulty: hasCategoryRoundConfig ? formState.difficulty : 'mixed',
+    difficulty: 'mixed',
     categories: hasCategoryRoundConfig
       ? [formState.contentSource === 'official' ? formState.category : 'Personalizado']
       : ['Tudo misturado'],
@@ -267,6 +267,16 @@ export function validateGenericCreateForm(
       formState.roundTimeSeconds > 180
     ) {
       errors.roundTimeSeconds = 'Use um tempo por rodada entre 5 e 180 segundos.';
+    }
+  }
+
+  if (gameType === 'bate-o-tempo') {
+    if (
+      !Number.isInteger(formState.roundTimeSeconds) ||
+      formState.roundTimeSeconds < 5 ||
+      formState.roundTimeSeconds > 60
+    ) {
+      errors.roundTimeSeconds = 'Use um tempo por rodada entre 5 e 60 segundos.';
     }
   }
 
@@ -1107,30 +1117,11 @@ export function GenericCreateRoomPage({ gameType }: GenericCreateRoomPageProps) 
                           )}
                         </label>
 
-                        <label htmlFor={`${gameType}-difficulty`}>
-                          <span className="text-[11px] font-bold text-[#64748B]">Dificuldade</span>
-                          <select
-                            id={`${gameType}-difficulty`}
-                            value={formState.difficulty}
-                            onChange={(event) => updateForm('difficulty', event.target.value as Difficulty)}
-                            aria-invalid={!!errors.difficulty}
-                            aria-describedby={errors.difficulty ? `${gameType}-difficulty-error` : undefined}
-                            className={`mt-1.5 w-full rounded-2xl border-2 bg-white px-4 py-3 text-sm font-bold text-[#0F172A] outline-none transition-colors ${
-                              errors.difficulty ? 'border-[#EF4444]' : 'border-[#CBD5E1]'
-                            }`}
-                          >
-                            {difficultyOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                          {errors.difficulty && (
-                            <p id={`${gameType}-difficulty-error`} className="mt-1.5 text-xs font-bold text-[#B91C1C]" role="alert">
-                              {errors.difficulty}
-                            </p>
-                          )}
-                        </label>
+                        <div className="rounded-2xl border-2 border-[#CBD5E1] bg-white px-4 py-3">
+                          <span className="text-[11px] font-bold text-[#64748B]">Selecao de perguntas</span>
+                          <p className="mt-1.5 text-sm font-black text-[#0F172A]">Tudo misturado</p>
+                          <p className="mt-1 text-xs font-semibold text-[#64748B]">As perguntas serao sorteadas entre todas as categorias.</p>
+                        </div>
                       </div>
                     )}
 
@@ -1296,14 +1287,14 @@ export function GenericCreateRoomPage({ gameType }: GenericCreateRoomPageProps) 
                       </div>
                     )}
 
-                    {hasCategoryRoundConfig && (
+                    {(hasCategoryRoundConfig || isBateOTempo) && (
                       <label htmlFor={`${gameType}-round-time`}>
                         <span className="text-[11px] font-bold text-[#64748B]">Tempo por rodada</span>
                         <input
                           id={`${gameType}-round-time`}
                           type="number"
                           min={5}
-                          max={180}
+                          max={isBateOTempo ? 60 : 180}
                           value={formState.roundTimeSeconds}
                           onChange={(event) => updateForm('roundTimeSeconds', Number(event.target.value))}
                           aria-invalid={!!errors.roundTimeSeconds}

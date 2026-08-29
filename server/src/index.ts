@@ -406,7 +406,9 @@ io.on('connection', (socket) => {
         : Array.isArray(settings.categories) && typeof settings.categories[0] === 'string'
           ? normalizeName(settings.categories[0])
           : 'Tudo misturado';
-      const roundTimeSeconds = isValidRoundTimeSeconds(settings.roundTimeSeconds) ? settings.roundTimeSeconds : 30;
+      const roundTimeSeconds = isValidRoundTimeSeconds(settings.roundTimeSeconds)
+        ? Math.min(settings.roundTimeSeconds, gameType === 'bate-o-tempo' ? 60 : 180)
+        : gameType === 'bate-o-tempo' ? 60 : 30;
       const boardSize = isValidBoardSize(settings.boardSize) ? settings.boardSize : 'medium';
       const maxChargeSeconds =
         Number.isInteger(settings.maxChargeSeconds) && settings.maxChargeSeconds >= 1 && settings.maxChargeSeconds <= 10

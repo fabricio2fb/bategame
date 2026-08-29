@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Question, Difficulty, AnswerType } from './types';
 
-const RELEASE_QUESTIONS_TOTAL = 11290;
+const RELEASE_QUESTIONS_TOTAL = 6530;
 const VALID_DIFFICULTIES = new Set<Difficulty>(['easy', 'medium', 'hard']);
 const OFFICIAL_QUESTIONS_PATH = path.resolve(__dirname, '..', '..', 'data', 'release', 'questions-release.json');
 
@@ -233,9 +233,7 @@ export class QuestionManager {
   getAvailableCount(categories: string[], difficulty: Difficulty): number {
     this.ensureLoaded();
     if (!this.index) return 0;
-    return this.getQuestionsByCategories(categories).filter(q =>
-      difficulty === 'mixed' || q.difficulty === difficulty
-    ).length;
+    return this.getQuestionsByCategories(categories).length;
   }
 
   getQuestionsByCategories(categories: string[]): Question[] {
@@ -260,10 +258,6 @@ export class QuestionManager {
     this.ensureLoaded();
     let pool = this.getQuestionsByCategories(categories);
 
-    if (difficulty !== 'mixed') {
-      pool = pool.filter(q => q.difficulty === difficulty);
-    }
-
     if (usedIds && usedIds.size > 0) {
       pool = pool.filter(q => !usedIds.has(q.id));
     }
@@ -279,11 +273,6 @@ export class QuestionManager {
   ): Question[] {
     if (pool.length <= count) {
       return this.shuffle([...pool]);
-    }
-
-    const useAll = categories.includes('Tudo misturado');
-    if (useAll) {
-      return this.balancedByCategory(pool, count);
     }
 
     return this.shuffle([...pool]).slice(0, count);

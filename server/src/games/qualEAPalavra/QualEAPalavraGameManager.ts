@@ -278,7 +278,7 @@ export class QualEAPalavraGameManager {
       teamScores: this.getTeamScores(room),
     });
 
-    runtime.revealTimer = setTimeout(() => this.advanceAfterReveal(room), 4000);
+    runtime.revealTimer = setTimeout(() => this.advanceAfterReveal(room), 2500);
   }
 
   private revealRound(room: GameRoom, reason: 'timeout'): void {
@@ -325,7 +325,7 @@ export class QualEAPalavraGameManager {
       teamScores: this.getTeamScores(room),
     });
 
-    runtime.revealTimer = setTimeout(() => this.advanceAfterReveal(room), 4000);
+    runtime.revealTimer = setTimeout(() => this.advanceAfterReveal(room), 2500);
   }
 
   private advanceAfterReveal(room: GameRoom): void {
@@ -348,7 +348,7 @@ export class QualEAPalavraGameManager {
 
     runtime.revealTimer = setTimeout(() => {
       this.startRound(room);
-    }, 2000);
+    }, 500);
   }
 
   private finishGame(room: GameRoom): void {

@@ -83,24 +83,24 @@ describe('SECURITY 3. Sanitized question does not expose answers or alternatives
   assert(sanitized.question === 'What is 2+2?', 'question text preserved');
 });
 
-describe('LOADING 1. Release JSON loads exactly 11,290 questions', () => {
+describe('LOADING 1. Release JSON loads the prepared mixed bank', () => {
   questionManager.loadAll();
   const total = questionManager.getTotalLoaded();
-  assert(total === 11290, `Loaded ${total} questions`);
+  assert(total === 6530, `Loaded ${total} questions`);
 });
 
 describe('LOADING 2. IDs are unique', () => {
-  const questions = questionManager.selectQuestions(['Tudo misturado'], 'mixed', 11290);
+  const questions = questionManager.selectQuestions(['Tudo misturado'], 'mixed', 6530);
   const ids = questions.map(q => q.id);
   assert(new Set(ids).size === ids.length, `Unique ${new Set(ids).size}/${ids.length}`);
 });
 
-describe('LOADING 3. Categories and difficulties are available', () => {
+describe('LOADING 3. Categories are available and difficulty is not used for selection', () => {
   const cats = questionManager.getCategories();
   const diffs = questionManager.getDifficulties();
   assert(cats.includes('Literatura'), 'Has Literatura');
   assert(cats.includes('Música'), 'Has Música');
-  assert(diffs.includes('easy') && diffs.includes('medium') && diffs.includes('hard'), `Difficulties: ${diffs.join(', ')}`);
+  assert(diffs.length === 1 && diffs.includes('medium'), `Internal difficulty metadata: ${diffs.join(', ')}`);
 });
 
 describe('VALIDATION 1. Exactly four alternatives', () => {
@@ -109,13 +109,13 @@ describe('VALIDATION 1. Exactly four alternatives', () => {
 });
 
 describe('VALIDATION 2. correctAnswer matches correctAlternativeIndex', () => {
-  const questions = questionManager.selectQuestions(['Tudo misturado'], 'mixed', 11290);
+  const questions = questionManager.selectQuestions(['Tudo misturado'], 'mixed', 6530);
   const mismatches = questions.filter(q => q.alternatives?.[q.correctAlternativeIndex ?? -1] !== q.correctAnswer);
   assert(mismatches.length === 0, `Mismatches: ${mismatches.slice(0, 3).map(q => q.id).join(', ')}`);
 });
 
 describe('VALIDATION 3. Portuguese UTF-8 text is preserved', () => {
-  const questions = questionManager.selectQuestions(['Tudo misturado'], 'mixed', 11290);
+  const questions = questionManager.selectQuestions(['Tudo misturado'], 'mixed', 6530);
   const hasAccented = questions.some(q => /[áàâãéêíóôõúç]/i.test(q.text));
   const hasReplacement = questions.some(q => q.text.includes('\uFFFD'));
   assert(hasAccented, 'At least one question contains accented characters');
@@ -144,10 +144,10 @@ describe('SELECTION 2. Category filter works', () => {
   assert(questions.every(q => q.category === 'Literatura'), `All ${questions.length} questions are Literatura`);
 });
 
-describe('SELECTION 3. Difficulty filter works', () => {
+describe('SELECTION 3. All difficulty labels are mixed', () => {
   const questions = questionManager.selectQuestions(['Tudo misturado'], 'easy', 10);
-  assert(questions.length > 0, 'Questions returned');
-  assert(questions.every(q => q.difficulty === 'easy'), `All ${questions.length} questions are easy`);
+  assert(questions.length === 10, 'Questions returned from mixed pool');
+  assert(questions.every(q => q.difficulty === 'medium'), `Mixed pool returned ${questions.length} questions`);
 });
 
 describe('SELECTION 4. Missing category returns empty safely', () => {

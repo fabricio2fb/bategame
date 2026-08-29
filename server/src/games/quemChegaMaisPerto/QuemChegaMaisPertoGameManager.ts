@@ -283,7 +283,7 @@ export class QuemChegaMaisPertoGameManager {
 
     runtime.revealTimer = setTimeout(() => {
       this.advanceAfterReveal(room);
-    }, 5000);
+    }, 2500);
   }
 
   private advanceAfterReveal(room: GameRoom): void {
@@ -306,7 +306,7 @@ export class QuemChegaMaisPertoGameManager {
 
     runtime.revealTimer = setTimeout(() => {
       this.startRound(room);
-    }, 2000);
+    }, 500);
   }
 
   private finishGame(room: GameRoom): void {

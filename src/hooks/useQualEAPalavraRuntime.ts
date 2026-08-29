@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getSocket } from '@/lib/socket';
 import { clearSessionData, getSessionData, RoomSettings, RoomState, RoomStatus, Team } from '@/lib/types';
 import { getRoomPath } from '@/lib/room-code';
+import { useDeadlineSeconds } from './useDeadlineSeconds';
 
 export interface WordPublicQuestion {
   id: string;
@@ -78,7 +79,7 @@ export function useQualEAPalavraRuntime(roomCode: string) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
-  const [timer, setTimer] = useState(0);
+  const timer = useDeadlineSeconds(roundDeadlineAt, status === 'word-visible' || status === 'answering');
 
   const applyRoom = useCallback((room: RoomState, currentPlayerId?: string) => {
     setSettings(room.settings);
@@ -105,18 +106,6 @@ export function useQualEAPalavraRuntime(roomCode: string) {
     setTeamScores(gameState.teamScores || []);
     setTeams(gameState.teams || []);
   }, []);
-
-  useEffect(() => {
-    if (!roundDeadlineAt || (status !== 'word-visible' && status !== 'answering')) {
-      setTimer(0);
-      return;
-    }
-
-    const update = () => setTimer(Math.max(0, Math.ceil((roundDeadlineAt - Date.now()) / 1000)));
-    update();
-    const interval = window.setInterval(update, 250);
-    return () => window.clearInterval(interval);
-  }, [roundDeadlineAt, status]);
 
   useEffect(() => {
     if (countdownValue === null || countdownValue <= 0) return;
@@ -173,7 +162,6 @@ export function useQualEAPalavraRuntime(roomCode: string) {
     const onWordSolved = (data: WordRoundReveal) => {
       setStatus('round-reveal');
       setRoundDeadlineAt(null);
-      setTimer(0);
       setLastReveal({ ...data, reason: 'solved' });
       setScores(data.scores || []);
       setTeamScores(data.teamScores || []);
@@ -182,7 +170,6 @@ export function useQualEAPalavraRuntime(roomCode: string) {
     const onRoundReveal = (data: WordRoundReveal) => {
       setStatus('round-reveal');
       setRoundDeadlineAt(null);
-      setTimer(0);
       setLastReveal(data);
       setScores(data.scores || []);
       setTeamScores(data.teamScores || []);
@@ -203,7 +190,6 @@ export function useQualEAPalavraRuntime(roomCode: string) {
       setScores(data.scores || []);
       setTeamScores(data.teamScores || []);
       setRoundDeadlineAt(null);
-      setTimer(0);
     };
     const onRematch = (data: { roomCode: string }) => router.push(getRoomPath(data.roomCode));
 

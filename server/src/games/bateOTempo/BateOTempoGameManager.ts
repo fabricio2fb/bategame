@@ -32,7 +32,7 @@ interface BateOTempoRuntime {
 }
 
 const DEFAULT_ROUNDS = 8;
-const DEFAULT_ROUND_LIMIT_SECONDS = 90;
+const DEFAULT_ROUND_LIMIT_SECONDS = 60;
 
 export class BateOTempoGameManager {
   private runtimes = new Map<string, BateOTempoRuntime>();
@@ -315,7 +315,7 @@ export class BateOTempoGameManager {
     runtime.hooks.emitRoom('round:reveal', payload);
     runtime.hooks.emitRoom('score:updated', { scores: this.getScores(room), teamScores: this.getTeamScores(room) });
 
-    runtime.revealTimer = setTimeout(() => this.advanceAfterReveal(room), 5000);
+    runtime.revealTimer = setTimeout(() => this.advanceAfterReveal(room), 2500);
   }
 
   private advanceAfterReveal(room: GameRoom): void {
@@ -335,7 +335,7 @@ export class BateOTempoGameManager {
     room.status = 'scoreboard';
     room.lastActivityAt = Date.now();
     runtime.hooks.emitRoom('game:state', this.getGameState(room));
-    runtime.revealTimer = setTimeout(() => this.startRound(room), 2000);
+    runtime.revealTimer = setTimeout(() => this.startRound(room), 500);
   }
 
   private finishGame(room: GameRoom): void {

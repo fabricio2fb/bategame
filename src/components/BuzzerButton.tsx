@@ -26,6 +26,7 @@ export const BuzzerButton: React.FC<BuzzerButtonProps> = ({ state, winnerName, r
         transition={{
           scale: state === 'ready' ? { repeat: Infinity, duration: 1.5 } : { duration: 0.2 },
         }}
+        style={{ willChange: state === 'ready' || state === 'pressed' ? 'transform' : undefined }}
         className={`relative w-40 h-40 rounded-full font-bold text-lg transition-all cursor-pointer disabled:cursor-not-allowed outline-none ${
           state === 'ready'
             ? 'bg-[#3B82F6] text-white shadow-[0_8px_32px_rgba(59,130,246,0.5)] active:shadow-[0_2px_8px_rgba(59,130,246,0.3)] active:scale-95'
